@@ -171,11 +171,7 @@
                 </ul>
             </nav>
         </div>
-        <div class="header-right">
-            <button id="theme-toggle" class="theme-toggle">
-                <i class="fas fa-moon"></i>
-            </button>
-        </div>
+       
     </header>
 
     <div class="map-container">
@@ -195,75 +191,202 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // Campus locations data - these should match your event locations
+        // Ordered with bhavans and key locations first
         const locations = [
+            // Bhavans (in priority order)
             { id: 'ratan-tata', name: 'Ratan Tata Bhavan', lat: 17.087863167643086, lng: 82.06640399381214 },
             { id: 'cotton', name: 'Cotton Bhavan', lat: 17.08792469891925, lng: 82.0668492406757 },
-            { id: 'kl-rao', name: 'KL Rao Bhavan', lat: 17.7280, lng: 83.3005 },
+            { id: 'kl-rao', name: 'KL Rao Bhavan', lat: 17.08890919657121, lng: 82.06705845281687 },
             { id: 'billgates', name: 'Billgates Bhavan', lat: 17.0895245049695, lng: 82.06707991051587 },
             { id: 'viswesaraya', name: 'Viswesaraya Bhavan', lat: 17.090447463751605, lng: 82.06692434252517 },
-            { id: 'ramanujan', name: 'Ramanujan Bhavan', lat: 17.7292, lng: 83.3008 },
-            { id: 'baskhara', name: 'Baskhara Bhavan', lat: 17.7287, lng: 83.3012 },
-            { id: 'cv-raman', name: 'CV Raman Bhavan', lat: 17.7293, lng: 83.3017 },
-            { id: 'james-watt', name: 'James Watt Bhavan', lat: 17.7288, lng: 83.3009 },
-            { id: 'newton', name: 'Newton Bhavan', lat: 17.7291, lng: 83.3014 },
-            { id: 'abdul-kalam', name: 'Abdul Kalam Bhavan', lat: 17.7286, lng: 83.3011 },
-            { id: 'agbs', name: 'AGBS', lat: 17.7294, lng: 83.3007 },
-            { id: 'bped-ground', name: 'BPED Ground', lat: 17.7283, lng: 83.3016 },
-            { id: 'kl-rao-ground', name: 'KL Rao Ground', lat: 17.7282, lng: 83.3004 },
-            { id: 'gallery', name: 'Gallery', lat: 17.7289, lng: 83.3006 },
-            { id: 'gallery-ground', name: 'Gallery Ground', lat: 17.7290, lng: 83.3003 },
-            { id: 'boys-hostel', name: 'Boys Hostel', lat: 17.7284, lng: 83.3013 },
-            { id: 'girl-hostel', name: 'Girl Hostel', lat: 17.7281, lng: 83.3010 },
-            { id: 'technical-hub', name: 'Technical Hub', lat: 17.7292, lng: 83.3019 }
+            { id: 'bhaskara-bhavan', name: 'Bhaskara Bhavan', lat: 17.091029333837017, lng: 82.06613436325006 },
+            { id: 'cv-raman', name: 'CV Raman Bhavan', lat: 17.091452458111533, lng: 82.06682241841239 },
+            { id: 'ramanujan', name: 'Ramanujan Bhavan', lat: 17.09275484072352, lng: 82.06666148586086 },
+            { id: 'james-watt', name: 'James Watt Bhavan', lat: 17.092918919774487, lng: 82.06620014588847 },
+            { id: 'newton', name: 'Newton Bhavan', lat: 17.093626509026613, lng: 82.06654346865862 },
+            { id: 'edison', name: 'Edison Bhavan', lat: 17.090201341863114, lng: 82.07086718971647 },
+            { id: 'abdul-kalam-bhavan', name: 'Abdul Kalam Bhavan', lat: 17.08977821473724, lng: 82.07054391507901 },
+            
+            // Key academic and administrative buildings
+            { id: 'agbs', name: 'AGBS', lat: 17.089596290822936, lng: 82.07173622547839 },
+            { id: 'polytechnic-college', name: 'Polytechnic College', lat: 17.08892703873516, lng: 82.07224980012961 },
+            { id: 'technical-hub', name: 'Technical Hub', lat: 17.087740105019247, lng: 82.06886089733018 },
+            
+            // Hostels
+            { id: 'boys-hostel', name: 'Boys Hostel', lat: 17.091773169636863, lng: 82.06917498393841 },
+            { id: 'girl-hostel', name: 'Girl Hostel', lat: 17.08802725099051, lng: 82.07067407070998 },
+            
+            // Grounds and outdoor areas
+            { id: 'kl-rao-ground', name: 'KL Rao Ground', lat: 17.088957804210455, lng: 82.06792607895672 },
+            { id: 'bped-ground', name: 'BPED Ground', lat: 17.09112162917562, lng: 82.0721317828909 },
+            { id: 'gallery-ground', name: 'Gallery Ground', lat: 17.089860255581016, lng: 82.0688916742842 },
+            { id: 'bus-ground', name: 'Bus Ground', lat: 17.091008823745277, lng: 82.0707692206834 },
+            
+            // Other locations
+            { id: 'gallery', name: 'Gallery', lat: 17.089676360656743, lng: 82.06756416422398 },
+            { id: 'mango-garden', name: 'Mango Garden', lat: 17.090844743012365, lng: 82.06845179198498 },
+            { id: 'apollo', name: 'Apollo Sunshine Health Care', lat: 17.08973986243556, lng: 82.07053459575654 },
+            { id: 'temple', name: 'Temple', lat: 17.09074766689225, lng: 82.06951294240847 }
         ];
 
-        // Initialize the map centered on Aditya University, Surampalem
-        const map = L.map('map').setView([17.090489589089355, 82.06848498587007], 17);  // Updated coordinates for Aditya University, Surampalem
+        // Initialize map variables
+        let map;
         let markers = [];
         let activeLocation = null;
-
-        // Add OpenStreetMap tiles
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
-
-        // Add markers for each location
-        locations.forEach(location => {
-            const marker = L.marker([location.lat, location.lng], {
-                title: location.name
+        let events = []; // Will store events from the backend
+        const API_BASE_URL = 'http://127.0.0.1:8000'; // Match this with your backend URL
+        
+        // Initialize the map after DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            map = L.map('map').setView([17.090489589089355, 82.06848498587007], 17);
+            
+            // Add OpenStreetMap tiles
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
             
-            marker.bindPopup(`<b>${location.name}</b>`);
+            // Initialize markers and load events
+            addMarkers();
+            loadEvents();
             
-            // Store reference to marker
-            markers.push({
-                id: location.id,
-                marker: marker,
-                name: location.name
+            // Add click handler for event items to toggle details
+            document.addEventListener('click', function(e) {
+                const eventSummary = e.target.closest('.event-summary');
+                if (eventSummary) {
+                    const eventItem = eventSummary.parentElement;
+                    eventItem.classList.toggle('expanded');
+                    
+                    // Close other expanded items
+                    if (eventItem.classList.contains('expanded')) {
+                        document.querySelectorAll('.event-item.expanded').forEach(expandedItem => {
+                            if (expandedItem !== eventItem) {
+                                expandedItem.classList.remove('expanded');
+                            }
+                        });
+                    }
+                }
             });
-            
-            // Add to locations list
-            const locationItem = document.createElement('div');
-            locationItem.className = 'location-item';
-            locationItem.textContent = location.name;
-            locationItem.dataset.id = location.id;
-            
-            locationItem.addEventListener('click', () => {
-                // Center map on selected location
-                map.setView([location.lat, location.lng], 18);
-                
-                // Highlight selected location
-                document.querySelectorAll('.location-item').forEach(item => {
-                    item.classList.remove('active');
-                });
-                locationItem.classList.add('active');
-                
-                // Open popup
-                marker.openPopup();
-            });
-            
-            document.getElementById('locations-list').appendChild(locationItem);
         });
+
+        // Function to get events for a specific location
+        function getEventsForLocation(locationName) {
+            return events.filter(event => 
+                event.location.toLowerCase() === locationName.toLowerCase()
+            );
+        }
+
+        // Format date as dd/mm/yy
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = String(date.getFullYear()).slice(-2);
+            return `${day}/${month}/${year}`;
+        }
+
+        // Function to create popup content with events
+        function createPopupContent(location) {
+            const locationEvents = getEventsForLocation(location.name);
+            let content = `<b>${location.name}</b>`;
+            
+            if (locationEvents.length > 0) {
+                content += '<div class="location-events"><h4>Upcoming Events:</h4><ul>';
+                locationEvents.forEach(event => {
+                    const eventDate = event.date ? formatDate(event.date) : 'No date';
+                    content += `
+                        <li class="event-item">
+                            <div class="event-summary">
+                                <strong>${event.name}</strong>
+                                <small>${eventDate}</small>
+                                <span class="toggle-details"><i class="fas fa-chevron-down"></i></span>
+                            </div>
+                            <div class="event-details">
+                                ${event.details ? `<div class="event-description">${event.details}</div>` : ''}
+                                ${event.image_url ? `
+                                <a href="${event.image_url}" target="_blank" class="view-image">
+                                    <i class="fas fa-image"></i> View Image
+                                </a>` : ''}
+                            </div>
+                        </li>`;
+                });
+                content += '</ul></div>';
+            } 
+            
+            return content;
+        }
+
+        // Function to add markers to the map
+        function addMarkers() {
+            locations.forEach(location => {
+                const marker = L.marker([location.lat, location.lng], {
+                    title: location.name
+                }).addTo(map);
+                
+                // Bind popup with events
+                marker.bindPopup(createPopupContent(location));
+                
+                // Store reference to marker
+                markers.push({
+                    id: location.id,
+                    marker: marker,
+                    name: location.name,
+                    location: location
+                });
+                
+                // Add to locations list
+                const locationItem = document.createElement('div');
+                locationItem.className = 'location-item';
+                locationItem.textContent = location.name;
+                locationItem.dataset.id = location.id;
+                
+                // Add event count badge if there are events
+                const locationEvents = getEventsForLocation(location.name);
+                if (locationEvents.length > 0) {
+                    const badge = document.createElement('span');
+                    badge.className = 'event-badge';
+                    badge.textContent = locationEvents.length;
+                    locationItem.appendChild(badge);
+                }
+                
+                locationItem.addEventListener('click', () => {
+                    // Center map on selected location
+                    map.setView([location.lat, location.lng], 18);
+                    
+                    // Highlight selected location
+                    document.querySelectorAll('.location-item').forEach(item => {
+                        item.classList.remove('active');
+                    });
+                    locationItem.classList.add('active');
+                    
+                    // Open popup
+                    marker.openPopup();
+                });
+                
+                document.getElementById('locations-list').appendChild(locationItem);
+            });
+        }
+
+        // Function to update popups with latest events
+        function updatePopups() {
+            markers.forEach(markerData => {
+                const location = locations.find(loc => loc.id === markerData.id);
+                if (location) {
+                    markerData.marker.setPopupContent(createPopupContent(location));
+                }
+            });
+        }
+
+        // Load events from backend
+        async function loadEvents() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/events`);
+                if (!response.ok) throw new Error('Failed to load events');
+                events = await response.json();
+                updatePopups();
+            } catch (error) {
+                console.error('Error loading events:', error);
+            }
+        }
 
         // Search functionality
         document.getElementById('location-search').addEventListener('input', (e) => {
@@ -280,9 +403,146 @@
             });
         });
 
+        // Add some styles for event items in popups
+        const style = document.createElement('style');
+        style.textContent = `
+            /* Event popup styles */
+            .location-events {
+                margin-top: 12px;
+                max-height: 300px;
+                overflow-y: auto;
+                padding: 8px;
+                border-radius: 8px;
+                background-color: #f8f9fa;
+            }
+            
+            .event-item {
+                padding: 0;
+                margin: 8px 0;
+                border-radius: 8px;
+                font-size: 0.9em;
+                background-color: white;
+                border: 1px solid #e0e0e0;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+                overflow: hidden;
+                transition: transform 0.2s, box-shadow 0.2s;
+            }
+            
+            .event-item:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            }
+            
+            .event-summary {
+                padding: 12px;
+                cursor: pointer;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                transition: background-color 0.2s;
+            }
+            
+            .event-summary:hover {
+                background-color: #f8f9fa;
+            }
+            
+            .event-summary .toggle-details {
+                color: #666;
+                transition: transform 0.2s;
+            }
+            
+            .event-item.expanded .toggle-details {
+                transform: rotate(180deg);
+            }
+            
+            .event-details {
+                max-height: 0;
+                overflow: hidden;
+                transition: max-height 0.3s ease-out;
+                padding: 0 12px;
+                border-top: 1px solid transparent;
+            }
+            
+            .event-item.expanded .event-details {
+                max-height: 1000px;
+                padding: 0 12px 12px;
+                border-top: 1px solid #eee;
+            }
+            
+            .event-description {
+                margin: 8px 0 12px;
+                line-height: 1.5;
+            }
+            
+            .event-item strong {
+                color: var(--accent-primary);
+                display: block;
+                margin-bottom: 4px;
+                font-size: 1.05em;
+            }
+            
+            .event-item small {
+                color: #666;
+                font-size: 0.85em;
+                display: block;
+                margin-bottom: 6px;
+            }
+            
+            .view-image {
+                display: inline-block;
+                margin-top: 6px;
+                color: var(--accent-primary);
+                text-decoration: none;
+                font-size: 0.85em;
+                font-weight: 500;
+            }
+            
+            .view-image:hover {
+                text-decoration: underline;
+            }
+            
+            .event-badge {
+                background-color: var(--accent-primary);
+                color: white;
+                border-radius: 10px;
+                padding: 2px 8px;
+                font-size: 0.7em;
+                margin-left: 8px;
+                vertical-align: middle;
+            }
+        `;
+        document.head.appendChild(style);
+
         // Theme toggle
         const themeToggle = document.getElementById('theme-toggle');
         const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+        
+        // Function to handle URL parameters for location highlighting
+        function checkUrlForLocation() {
+            const params = new URLSearchParams(window.location.search);
+            const locationId = params.get('location');
+            if (locationId) {
+                const markerData = markers.find(m => m.id === locationId);
+                if (markerData) {
+                    const location = markerData.location;
+                    map.setView([location.lat, location.lng], 18);
+                    markerData.marker.openPopup();
+                    
+                    // Highlight in the list
+                    const locationItems = document.querySelectorAll('.location-item');
+                    locationItems.forEach(item => {
+                        item.classList.remove('active');
+                        if (item.dataset.id === locationId) {
+                            item.classList.add('active');
+                            item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }
+                    });
+                }
+            }
+        }
+        
+        // Check for location in URL when page loads
+        setTimeout(checkUrlForLocation, 500); // Small delay to ensure map is loaded
         
         function toggleTheme() {
             document.body.classList.toggle('dark-theme');
@@ -307,38 +567,66 @@
         
         themeToggle.addEventListener('click', toggleTheme);
 
-        // Add dark theme styles
-        const style = document.createElement('style');
-        style.textContent = `
-            .dark-theme {
-                --bg: #121212;
-                --bg-secondary: #1e1e1e;
-                --bg-tertiary: #2d2d2d;
-                --text-primary: #f5f5f5;
-                --border-color: #444444;
-            }
-            
-            .dark-theme header {
-                background-color: var(--bg-secondary);
-                border-bottom: 1px solid var(--border-color);
-            }
-            
-            .dark-theme .location-list {
-                background-color: var(--bg-secondary);
-                color: var(--text-primary);
-            }
-            
-            .dark-theme .location-item {
-                border-bottom-color: var(--border-color);
-            }
-            
-            .dark-theme .search-box input {
-                background-color: var(--bg-tertiary);
-                border-color: var(--border-color);
-                color: var(--text-primary);
-            }
-        `;
-        document.head.appendChild(style);
+        // Add dark theme styles if not already added
+        if (!document.getElementById('dark-theme-styles')) {
+            const style = document.createElement('style');
+            style.id = 'dark-theme-styles';
+            style.textContent = `
+                /* Dark theme styles */
+                .dark-theme {
+                    --bg: #121212;
+                    --bg-secondary: #1e1e1e;
+                    --bg-tertiary: #2d2d2d;
+                    --text-primary: #f5f5f5;
+                    --border-color: #444444;
+                    --card-bg: #1e1e1e;
+                    --card-hover: #2d2d2d;
+                    --accent-primary: #4dabf7;
+                }
+                
+                .dark-theme header {
+                    background-color: var(--bg-secondary);
+                    border-bottom: 1px solid var(--border-color);
+                }
+                
+                .dark-theme .location-item {
+                    color: var(--text-primary);
+                    border-bottom: 1px solid var(--border-color);
+                    background-color: var(--bg-secondary);
+                }
+                
+                .dark-theme .location-item:hover, 
+                .dark-theme .location-item.active {
+                    background-color: var(--bg-tertiary);
+                }
+                
+                .dark-theme #location-search {
+                    background-color: var(--bg-secondary);
+                    color: var(--text-primary);
+                    border: 1px solid var(--border-color);
+                }
+                
+                .dark-theme .theme-toggle-btn {
+                    color: var(--text-primary);
+                    background-color: var(--bg-tertiary);
+                }
+                
+                .dark-theme .location-events {
+                    background-color: var(--bg-secondary);
+                    color: var(--text-primary);
+                }
+                
+                .dark-theme .event-item {
+                    background-color: var(--card-bg);
+                    border-color: var(--border-color);
+                }
+                
+                .dark-theme .view-image {
+                    color: var(--accent-primary);
+                }
+            `;
+            document.head.appendChild(style);
+        }
     </script>
 </body>
 </html>

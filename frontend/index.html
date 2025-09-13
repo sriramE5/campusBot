@@ -32,18 +32,6 @@
             --header-height: 60px;
         }
 
-        .dark-mode {
-            --bg: #121212;
-            --bg-secondary: #1e1e1e;
-            --bg-tertiary: #2d2d2d;
-            --code-bg: #1e1e1e;
-            --text-primary: #f5f5f5;
-            --text-secondary: #aaaaaa;
-            --border-color: #444444;
-            --btn-hover: brightness(1.1);
-            --glow: 0 0 20px rgba(138, 143, 255, 0.4);
-        }
-
         * {
             box-sizing: border-box;
             margin: 0;
@@ -238,16 +226,104 @@
         .event-list {
             list-style: none;
             padding: 0;
+            margin: 0;
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
+            gap: 0.75rem;
         }
         
         .event-item {
-            padding: 0.75rem;
-            background: var(--bg-tertiary);
+            background: var(--bg-secondary);
             border-radius: var(--border-radius);
-            position: relative;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+        
+        .event-item:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transform: translateY(-1px);
+        }
+        
+        .event-header {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            background: var(--bg-tertiary);
+        }
+        
+        .event-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+        
+        .event-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        
+        .event-date {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        
+        .event-location {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        
+        .event-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            padding: 0 1rem;
+            background: var(--bg);
+        }
+        
+        .event-item.expanded .event-details {
+            max-height: 500px;
+            padding: 0.75rem 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .event-description {
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: var(--text-primary);
+            margin-bottom: 0.75rem;
+        }
+        
+        .event-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 0.5rem;
+        }
+        
+        .view-image {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.8rem;
+            color: var(--accent-primary);
+            text-decoration: none;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        
+        .view-image:hover {
+            background-color: rgba(67, 97, 238, 0.1);
         }
         
         .event-item h4 {
@@ -383,20 +459,6 @@
             left: 50%;
             transform: translateX(-50%);
             text-align: center;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-        }
-        
-        .header-nav {
-            display: flex;
-            align-items: center;
         }
         
         .map-link {
@@ -442,21 +504,6 @@
             margin-left: 10px;
         }
 
-        .dark-mode .university-title {
-            background: #0C6AB0;
-            background-size: 400% 400%;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            color: transparent;
-            animation: gradientMove 6s ease infinite;
-        }
-        
-        @keyframes gradientMove {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-        
         main {
             flex: 1;
             display: flex;
@@ -543,16 +590,6 @@
 
         .copy-code-btn:hover {
             background-color: rgba(0, 0, 0, 0.1);
-        }
-
-        .dark-mode .copy-code-btn {
-            background-color: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: #ccc;
-        }
-
-        .dark-mode .copy-code-btn:hover {
-            background-color: rgba(255, 255, 255, 0.2);
         }
 
         .input-container {
@@ -1106,8 +1143,28 @@
         }
         
         .file-upload-container {
-            margin-top: 10px;
-            width: 100%;
+            margin-bottom: 15px;
+        }
+        
+        .datetime-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .date-input, .time-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--bg);
+            color: var(--text-primary);
+        }
+        
+        .date-input:focus, .time-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2);
         }
         
         .file-upload-label {
@@ -1219,12 +1276,10 @@
     <div class="app-container" id="app-container">
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <h2><id = "aditya">Aditya</id> University</h2>
+                <h2>Aditya University</h2>
                    
                 <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" title="Toggle Sidebar">
-                    <svg fill="currentColor" height="1em" style="display: block; vertical-align: middle;" viewBox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg">
-                        <path clip-rule="evenodd" d="M3 6C3 5.44772 3.44772 5 4 5H20C20.5523 5 21 5.44772 21 6C21 6.55228 20.5523 7 20 7H4C3.44772 7 3 6.55228 3 6ZM3 12C3 11.4477 3.44772 11 4 11H20C20.5523 11 21 11.4477 21 12C21 12.5523 20.5523 13 20 13H4C3.44772 13 3 12.5523 3 12ZM4 17C3.44772 17 3 17.4477 3 18C3 18.5523 3.44772 19 4 19H20C20.5523 19 21 18.5523 21 18C21 17.4477 20.5523 17 20 17H4Z" fill="currentColor" fill-rule="evenodd"></path>
-                    </svg>
+                    
                 </button>
             </div>
             
@@ -1260,9 +1315,17 @@
                 <i class="fas fa-plus"></i> New Chat
             </button>
             
-            <ul class="chat-history-list" id="chat-history-list">
-                <!-- Chat history will be populated here -->
-            </ul>
+            <div class="history-section">
+                <details class="history-details">
+                    <summary class="history-summary">
+                        <i class="fas fa-history"></i> View History
+                        
+                    </summary>
+                    <ul class="chat-history-list" id="chat-history-list">
+                    
+                    </ul>
+                </details>
+            </div>
         </aside>
         
         <div class="sidebar-overlay" id="sidebar-overlay"></div>
@@ -1289,9 +1352,6 @@
                             <i class="fas fa-map-marker-alt"></i> View Map
                         </a>
                     </nav>
-                    <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle Dark Mode">
-                        <i class="fas fa-moon"></i>
-                    </button>
                 </div>
             </header>
             
@@ -1358,28 +1418,46 @@
             <div class="dialog-body">
                 <p>Add a new event:</p>
                 <input type="text" class="dialog-input" id="event-name" placeholder="Event Name">
-                <input type="text" class="dialog-input" id="event-date" placeholder="Date (YYYY-MM-DD)">
+                <div class="datetime-container">
+                    <input type="date" class="dialog-input date-input" id="event-date" required>
+                    <input type="time" class="dialog-input time-input" id="event-time">
+                </div>
                 <select class="dialog-input" id="event-location">
                     <option value="" disabled selected>Select a location</option>
-                    <option value="ratan tata bhavan">Ratan Tata Bhavan</option>
-                    <option value="cotton bhavan">Cotton Bhavan</option>
-                    <option value="kl rao bhavan">KL Rao Bhavan</option>
-                    <option value="billgates bhavan">Billgates Bhavan</option>
-                    <option value="viswesaraya bhavan">Viswesaraya Bhavan</option>
-                    <option value="ramanujan bhavan">Ramanujan Bhavan</option>
-                    <option value="baskhara bhavan">Baskhara Bhavan</option>
-                    <option value="cv raman bhavan">CV Raman Bhavan</option>
-                    <option value="james watt bhavan">James Watt Bhavan</option>
-                    <option value="newton bhavan">Newton Bhavan</option>
-                    <option value="abdul kalam bhavan">Abdul Kalam Bhavan</option>
-                    <option value="business school">AGBS</option>
-                    <option value="bped ground">BPED Ground</option>
-                    <option value="kl rao ground">KL Rao Ground</option>
-                    <option value="gallery">Gallery</option>
-                    <option value="gallery ground">Gallery Ground</option>
-                    <option value="boys hostel">Boys Hostel</option>
-                    <option value="girl hostel">Girl Hostel</option>
-                    <option value="technical hub">Technical Hub</option>
+                    <optgroup label="Academic & Administrative">
+                        <option value="ratan-tata">Ratan Tata Bhavan</option>
+                        <option value="cotton">Cotton Bhavan</option>
+                        <option value="kl-rao">KL Rao Bhavan</option>
+                        <option value="billgates">Billgates Bhavan</option>
+                        <option value="viswesaraya">Viswesaraya Bhavan</option>
+                        <option value="bhaskara">Bhaskara Bhavan</option>
+                        <option value="cv-raman">CV Raman Bhavan</option>
+                        <option value="ramanujan">Ramanujan Bhavan</option>
+                        <option value="james-watt">James Watt Bhavan</option>
+                        <option value="newton">Newton Bhavan</option>
+                        <option value="edison">Edison Bhavan</option>
+                        <option value="abdul-kalam">Abdul Kalam Bhavan</option>
+
+                        <option value="agbs">AGBS</option>
+                        <option value="polytechnic">Polytechnic College</option>
+                        <option value="technical-hub">Technical Hub</option>
+                    </optgroup>
+                    <optgroup label="Hostels">
+                        <option value="boys-hostel">Boys Hostel</option>
+                        <option value="girl-hostel">Girl Hostel</option>
+                    </optgroup>
+                    <optgroup label="Grounds">
+                        <option value="kl-rao-ground">KL Rao Ground</option>
+                        <option value="bped-ground">BPED Ground</option>
+                        <option value="gallery-ground">Gallery Ground</option>
+                        <option value="bus-ground">Bus Ground</option>
+                    </optgroup>
+                    <optgroup label="Other Locations">
+                        <option value="gallery">Gallery</option>
+                        <option value="mango-garden">Mango Garden</option>
+                        <option value="apollo">Apollo Sunshine Health Care</option>
+                        <option value="temple">Temple</option>
+                    </optgroup>
                 </select>
                 <input type="text" class="dialog-input" id="event-details" placeholder="Details">
                 <div class="file-upload-container">
@@ -1449,9 +1527,6 @@
                 }, 300);
             }, 800);
 
-            // Apply theme from local storage
-            applyThemeFromStorage();
-            
             // Set up event listeners
             setupEventListeners();
             
@@ -1502,9 +1577,6 @@
 
             // New chat button
             newChatBtn.addEventListener('click', startNewChat);
-
-            // Theme toggle
-            themeToggleBtn.addEventListener('click', toggleTheme);
 
             // Admin functionality
             adminLoginBtn.addEventListener('click', showAdminLogin);
@@ -1587,9 +1659,16 @@
         function toggleSidebar() {
             const mobileView = isMobileView();
             if (mobileView) {
+                const isOpening = !sidebar.classList.contains('open');
                 sidebar.classList.toggle('open');
-                sidebarOverlay.style.display = sidebar.classList.contains('open') ? 'block' : 'none';
-                document.body.style.overflow = sidebar.classList.contains('open') ? 'hidden' : 'auto';
+                sidebarOverlay.style.display = isOpening ? 'block' : 'none';
+                document.body.style.overflow = isOpening ? 'hidden' : 'auto';
+                
+                // Toggle header actions visibility
+                const headerActions = document.querySelector('.header-actions');
+                if (headerActions) {
+                    headerActions.style.display = isOpening ? 'none' : 'flex';
+                }
             } else {
                 sidebar.classList.toggle('collapsed');
                 document.getElementById('app-container').classList.toggle('sidebar-hidden');
@@ -1602,21 +1681,6 @@
             const mobileView = isMobileView();
             menuToggle.style.display = mobileView ? 'block' : 'none';
             headerSidebarToggleBtn.style.display = mobileView ? 'none' : 'block';
-        }
-        
-        function applyThemeFromStorage() {
-            const darkModeSetting = localStorage.getItem('darkMode');
-            const isDark = darkModeSetting === 'enabled';
-            document.body.classList.toggle('dark-mode', isDark);
-            themeToggleBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-            themeToggleBtn.title = isDark ? 'Toggle Light Mode' : 'Toggle Dark Mode';
-        }
-
-        function toggleTheme() {
-            const isNowDark = document.body.classList.toggle('dark-mode');
-            localStorage.setItem('darkMode', isNowDark ? 'enabled' : 'disabled');
-            themeToggleBtn.innerHTML = isNowDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-            themeToggleBtn.title = isNowDark ? 'Toggle Light Mode' : 'Toggle Dark Mode';
         }
 
         function initSpeechRecognition() {
@@ -1968,29 +2032,53 @@
 
         function showUpdateEventsDialog() {
             updateEventsDialog.classList.add('show');
+            
+            // Set default date to today
+            const today = new Date();
+            document.getElementById('event-date').valueAsDate = today;
+            
+            // Set default time to next hour, rounded to nearest 15 minutes
+            const nextHour = new Date(today.getTime() + 60 * 60 * 1000);
+            const minutes = Math.ceil(nextHour.getMinutes() / 15) * 15 % 60;
+            const hours = minutes === 0 ? nextHour.getHours() + 1 : nextHour.getHours();
+            const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            document.getElementById('event-time').value = timeStr;
         }
 
         function hideUpdateEventsDialog() {
             updateEventsDialog.classList.remove('show');
             // Clear inputs
-            eventNameInput.value = '';
-            eventDateInput.value = '';
-            eventLocationInput.value = '';
-            eventDetailsInput.value = '';
+            document.getElementById('event-name').value = '';
+            document.getElementById('event-date').value = '';
+            document.getElementById('event-time').value = '';
+            document.getElementById('event-location').value = '';
+            document.getElementById('event-details').value = '';
         }
 
         async function addEventToBackend() {
-            const newEvent = {
-                name: eventNameInput.value,
-                date: eventDateInput.value,
-                location: eventLocationInput.value,
-                details: eventDetailsInput.value
-            };
-
-            if (!newEvent.name || !newEvent.date) {
+            const name = document.getElementById('event-name').value.trim();
+            const date = document.getElementById('event-date').value;
+            const time = document.getElementById('event-time').value;
+            const location = document.getElementById('event-location').value;
+            const details = document.getElementById('event-details').value.trim();
+            
+            if (!name || !date) {
                 showToast('Name and Date are required!', true);
                 return;
             }
+            
+            // Combine date and time
+            let dateTime = date;
+            if (time) {
+                dateTime = `${date}T${time}`;
+            }
+            
+            const newEvent = {
+                name,
+                date: dateTime,
+                location,
+                details: details || null
+            };
 
             try {
                 const response = await fetch(`${API_BASE_URL}/events`, {
@@ -2032,28 +2120,145 @@
         
         function renderEventsList(events) {
             if (events.length === 0) {
-                eventsContent.innerHTML = `<p style="color: var(--text-secondary);">No upcoming events.</p>`;
+                eventsContent.innerHTML = `
+                    <div style="text-align: center; padding: 1rem; color: var(--text-secondary);">
+                        <i class="fas fa-calendar-alt" style="font-size: 1.5rem; margin-bottom: 0.5rem; opacity: 0.7;"></i>
+                        <p>No upcoming events scheduled.</p>
+                    </div>`;
                 return;
             }
             
             const eventList = document.createElement('ul');
             eventList.className = 'event-list';
             
-            events.forEach(event => {
+            // Sort events by date (newest first)
+            const sortedEvents = [...events].sort((a, b) => new Date(a.date) - new Date(b.date));
+            
+            sortedEvents.forEach(event => {
                 const li = document.createElement('li');
                 li.className = 'event-item';
+                
+                // Format date
+                const eventDate = new Date(event.date);
+                const formattedDate = eventDate.toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+                
+                // Format time
+                const formattedTime = eventDate.toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                });
+                
+                // Find the location ID for this event
+                const locationId = Object.entries(locations).find(
+                    ([id, loc]) => loc.name.toLowerCase() === event.location.toLowerCase()
+                )?.[0] || '';
+                
+                // Create a clickable location link
+                const locationLink = locationId 
+                    ? `locations.html?location=${encodeURIComponent(locationId)}`
+                    : '#';
+                
                 li.innerHTML = `
-                    <h4>${event.name}</h4>
-                    <p><strong>Date:</strong> ${event.date}</p>
-                    <p><strong>Location:</strong> ${event.location}</p>
-                    <p><strong>Details:</strong> ${event.details}</p>
+                    <div class="event-header">
+                        <div class="event-name" title="${event.name}">${event.name}</div>
+                        <div class="event-meta">
+                            <span class="event-date" title="${formattedDate} at ${formattedTime}">
+                                <i class="far fa-calendar-alt"></i> ${formattedDate}
+                            </span>
+                            <a href="${locationLink}" class="event-location" title="View on map">
+                                <i class="fas fa-map-marker-alt"></i> ${event.location}
+                            </a>
+                        </div>
+                    </div>
+                    <div class="event-details">
+                        ${event.details ? `<div class="event-description">${event.details}</div>` : ''}
+                        ${event.image_url ? `
+                            <div class="event-actions">
+                                <a href="${event.image_url}" target="_blank" class="view-image">
+                                    <i class="fas fa-image"></i> View Event Image
+                                </a>
+                            </div>
+                        ` : ''}
+                    </div>
                 `;
+                
+                // Add click handler to toggle details
+                const header = li.querySelector('.event-header');
+                header.addEventListener('click', () => {
+                    li.classList.toggle('expanded');
+                    
+                    // Close other expanded items
+                    if (li.classList.contains('expanded')) {
+                        document.querySelectorAll('.event-item.expanded').forEach(expandedItem => {
+                            if (expandedItem !== li) {
+                                expandedItem.classList.remove('expanded');
+                            }
+                        });
+                    }
+                });
+                
+                // Add click handler for location link
+                const locationEl = li.querySelector('.event-location');
+                if (locationEl) {
+                    locationEl.addEventListener('click', (e) => {
+                        if (locationId) {
+                            e.stopPropagation();
+                            window.location.href = locationLink;
+                        }
+                    });
+                }
+                
                 eventList.appendChild(li);
             });
             
             eventsContent.innerHTML = '';
             eventsContent.appendChild(eventList);
         }
+        
+        // Campus locations data - these should match your event locations
+        // Ordered with bhavans and key locations first
+        const locations = [
+            // Bhavans (in priority order)
+            { id: 'ratan-tata', name: 'Ratan Tata Bhavan' },
+            { id: 'cotton', name: 'Cotton Bhavan' },
+            { id: 'kl-rao', name: 'KL Rao Bhavan' },
+            { id: 'billgates', name: 'Billgates Bhavan' },
+            { id: 'viswesaraya', name: 'Viswesaraya Bhavan' },
+            { id: 'bhaskara', name: 'Bhaskara Bhavan' },
+            { id: 'cv-raman', name: 'CV Raman Bhavan' },
+            { id: 'ramanujan', name: 'Ramanujan Bhavan' },
+            { id: 'james-watt', name: 'James Watt Bhavan' },
+            { id: 'newton', name: 'Newton Bhavan' },
+            { id: 'edison', name: 'Edison Bhavan' },
+            { id: 'abdul-kalam', name: 'Abdul Kalam Bhavan' },
+            
+            // Key academic and administrative buildings
+            { id: 'agbs', name: 'AGBS' },
+            { id: 'polytechnic', name: 'Polytechnic College' },
+            { id: 'technical-hub', name: 'Technical Hub' },
+            
+            // Hostels
+            { id: 'boys-hostel', name: 'Boys Hostel' },
+            { id: 'girl-hostel', name: 'Girl Hostel' },
+            
+            // Grounds and outdoor areas
+            { id: 'kl-rao-ground', name: 'KL Rao Ground' },
+            { id: 'bped-ground', name: 'BPED Ground' },
+            { id: 'gallery-ground', name: 'Gallery Ground' },
+            { id: 'bus-ground', name: 'Bus Ground' },
+            
+            // Other locations
+            { id: 'gallery', name: 'Gallery' },
+            { id: 'mango-garden', name: 'Mango Garden' },
+            { id: 'apollo', name: 'Apollo Sunshine Health Care' },
+            { id: 'temple', name: 'Temple' }
+        ];
 
 
         // Initialize the app when DOM is loaded
