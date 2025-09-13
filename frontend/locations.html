@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Aditya University - Campus Map</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root {
+            --bg: #ffffff;
+            --bg-secondary: #f5f5f5;
+            --bg-tertiary: #eaeaea;
+            --text-primary: #1a1a1a;
+            --accent-primary: #0C6AB0;
+            --border-color: #cccccc;
+            --header-height: 60px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-primary);
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 2rem;
+            height: var(--header-height);
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo {
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: var(--accent-primary);
+        }
+
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 1.5rem;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: var(--text-primary);
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        nav a:hover, nav a.active {
+            color: var(--accent-primary);
+        }
+
+        .map-container {
+            margin-top: var(--header-height);
+            height: calc(100vh - var(--header-height));
+            width: 100%;
+            position: relative;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        .location-list {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 1rem;
+            width: 300px;
+            max-height: calc(100% - 40px);
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .location-list h3 {
+            margin-bottom: 1rem;
+            color: var(--accent-primary);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        .location-item {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--bg-secondary);
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .location-item:hover {
+            background-color: var(--bg-secondary);
+        }
+
+        .location-item.active {
+            font-weight: bold;
+            color: var(--accent-primary);
+        }
+
+        .search-box {
+            margin-bottom: 1rem;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .search-box i {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-primary);
+        }
+
+        @media (max-width: 768px) {
+            .location-list {
+                position: static;
+                width: 100%;
+                max-height: 200px;
+                margin: 0;
+                border-radius: 0;
+                box-shadow: none;
+                border-bottom: 1px solid var(--border-color);
+            }
+
+            .map-container {
+                margin-top: 0;
+                height: calc(100vh - var(--header-height) - 200px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-left">
+            <div class="logo">Aditya University</div>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="locations.html" class="active">Campus Map</a></li>
+                </ul>
+            </nav>
+        </div>
+        <div class="header-right">
+            <button id="theme-toggle" class="theme-toggle">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </header>
+
+    <div class="map-container">
+        <div id="map"></div>
+        <div class="location-list">
+            <h3>Campus Locations</h3>
+            <div class="search-box">
+                <input type="text" id="location-search" placeholder="Search locations...">
+                <i class="fas fa-search"></i>
+            </div>
+            <div id="locations-list">
+                <!-- Locations will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Campus locations data - these should match your event locations
+        const locations = [
+            { id: 'ratan-tata', name: 'Ratan Tata Bhavan', lat: 17.087863167643086, lng: 82.06640399381214 },
+            { id: 'cotton', name: 'Cotton Bhavan', lat: 17.08792469891925, lng: 82.0668492406757 },
+            { id: 'kl-rao', name: 'KL Rao Bhavan', lat: 17.7280, lng: 83.3005 },
+            { id: 'billgates', name: 'Billgates Bhavan', lat: 17.0895245049695, lng: 82.06707991051587 },
+            { id: 'viswesaraya', name: 'Viswesaraya Bhavan', lat: 17.090447463751605, lng: 82.06692434252517 },
+            { id: 'ramanujan', name: 'Ramanujan Bhavan', lat: 17.7292, lng: 83.3008 },
+            { id: 'baskhara', name: 'Baskhara Bhavan', lat: 17.7287, lng: 83.3012 },
+            { id: 'cv-raman', name: 'CV Raman Bhavan', lat: 17.7293, lng: 83.3017 },
+            { id: 'james-watt', name: 'James Watt Bhavan', lat: 17.7288, lng: 83.3009 },
+            { id: 'newton', name: 'Newton Bhavan', lat: 17.7291, lng: 83.3014 },
+            { id: 'abdul-kalam', name: 'Abdul Kalam Bhavan', lat: 17.7286, lng: 83.3011 },
+            { id: 'agbs', name: 'AGBS', lat: 17.7294, lng: 83.3007 },
+            { id: 'bped-ground', name: 'BPED Ground', lat: 17.7283, lng: 83.3016 },
+            { id: 'kl-rao-ground', name: 'KL Rao Ground', lat: 17.7282, lng: 83.3004 },
+            { id: 'gallery', name: 'Gallery', lat: 17.7289, lng: 83.3006 },
+            { id: 'gallery-ground', name: 'Gallery Ground', lat: 17.7290, lng: 83.3003 },
+            { id: 'boys-hostel', name: 'Boys Hostel', lat: 17.7284, lng: 83.3013 },
+            { id: 'girl-hostel', name: 'Girl Hostel', lat: 17.7281, lng: 83.3010 },
+            { id: 'technical-hub', name: 'Technical Hub', lat: 17.7292, lng: 83.3019 }
+        ];
+
+        // Initialize the map centered on Aditya University, Surampalem
+        const map = L.map('map').setView([17.090489589089355, 82.06848498587007], 17);  // Updated coordinates for Aditya University, Surampalem
+        let markers = [];
+        let activeLocation = null;
+
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Add markers for each location
+        locations.forEach(location => {
+            const marker = L.marker([location.lat, location.lng], {
+                title: location.name
+            }).addTo(map);
+            
+            marker.bindPopup(`<b>${location.name}</b>`);
+            
+            // Store reference to marker
+            markers.push({
+                id: location.id,
+                marker: marker,
+                name: location.name
+            });
+            
+            // Add to locations list
+            const locationItem = document.createElement('div');
+            locationItem.className = 'location-item';
+            locationItem.textContent = location.name;
+            locationItem.dataset.id = location.id;
+            
+            locationItem.addEventListener('click', () => {
+                // Center map on selected location
+                map.setView([location.lat, location.lng], 18);
+                
+                // Highlight selected location
+                document.querySelectorAll('.location-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                locationItem.classList.add('active');
+                
+                // Open popup
+                marker.openPopup();
+            });
+            
+            document.getElementById('locations-list').appendChild(locationItem);
+        });
+
+        // Search functionality
+        document.getElementById('location-search').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const locationItems = document.querySelectorAll('.location-item');
+            
+            locationItems.forEach(item => {
+                const locationName = item.textContent.toLowerCase();
+                if (locationName.includes(searchTerm)) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+
+        // Theme toggle
+        const themeToggle = document.getElementById('theme-toggle');
+        const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+        
+        function toggleTheme() {
+            document.body.classList.toggle('dark-theme');
+            const isDark = document.body.classList.contains('dark-theme');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            updateThemeIcon(isDark);
+        }
+        
+        function updateThemeIcon(isDark) {
+            const icon = themeToggle.querySelector('i');
+            icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+        }
+        
+        // Check for saved theme preference or use system preference
+        const currentTheme = localStorage.getItem('theme') || 
+                           (prefersDarkScheme.matches ? 'dark' : 'light');
+        
+        if (currentTheme === 'dark') {
+            document.body.classList.add('dark-theme');
+            updateThemeIcon(true);
+        }
+        
+        themeToggle.addEventListener('click', toggleTheme);
+
+        // Add dark theme styles
+        const style = document.createElement('style');
+        style.textContent = `
+            .dark-theme {
+                --bg: #121212;
+                --bg-secondary: #1e1e1e;
+                --bg-tertiary: #2d2d2d;
+                --text-primary: #f5f5f5;
+                --border-color: #444444;
+            }
+            
+            .dark-theme header {
+                background-color: var(--bg-secondary);
+                border-bottom: 1px solid var(--border-color);
+            }
+            
+            .dark-theme .location-list {
+                background-color: var(--bg-secondary);
+                color: var(--text-primary);
+            }
+            
+            .dark-theme .location-item {
+                border-bottom-color: var(--border-color);
+            }
+            
+            .dark-theme .search-box input {
+                background-color: var(--bg-tertiary);
+                border-color: var(--border-color);
+                color: var(--text-primary);
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
