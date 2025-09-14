@@ -1127,6 +1127,27 @@
             gap: 0.5rem;
         }
         
+        .event-location {
+            color: var(--accent-primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            transition: color 0.2s;
+            cursor: pointer;
+        }
+        
+        .event-location.no-link {
+            color: var(--text-secondary);
+            cursor: default;
+            opacity: 0.7;
+        }
+        
+        .event-location:not(.no-link):hover {
+            color: var(--accent-secondary);
+            text-decoration: underline;
+        }
+        
         .dark-mode .dialog-header {
             color: var(--accent-secondary);
         }
@@ -2059,7 +2080,8 @@
             const name = document.getElementById('event-name').value.trim();
             const date = document.getElementById('event-date').value;
             const time = document.getElementById('event-time').value;
-            const location = document.getElementById('event-location').value;
+            const locationSelect = document.getElementById('event-location');
+            const location = locationSelect.options[locationSelect.selectedIndex].text;
             const details = document.getElementById('event-details').value.trim();
             
             if (!name || !date) {
@@ -2155,14 +2177,52 @@
                 });
                 
                 // Find the location ID for this event
-                const locationId = Object.entries(locations).find(
-                    ([id, loc]) => loc.name.toLowerCase() === event.location.toLowerCase()
-                )?.[0] || '';
+                let locationId = '';
+                const eventLocation = event.location.toLowerCase().trim();
                 
-                // Create a clickable location link
-                const locationLink = locationId 
-                    ? `locations.html?location=${encodeURIComponent(locationId)}`
-                    : '#';
+                // First try exact match on ID
+                const locationById = locations.find(loc => 
+                    loc.id.toLowerCase() === eventLocation.replace(/\s+/g, '-').toLowerCase()
+                );
+                
+                if (locationById) {
+                    locationId = locationById.id;
+                } else {
+                    // Then try exact match on name
+                    const locationByName = locations.find(loc => 
+                        loc.name.toLowerCase() === eventLocation
+                    );
+                    
+                    if (locationByName) {
+                        locationId = locationByName.id;
+                    } else {
+                        // Try partial match as last resort
+                        const partialMatch = locations.find(loc => {
+                            const locName = loc.name.toLowerCase();
+                            return eventLocation.includes(locName) || 
+                                   locName.includes(eventLocation) ||
+                                   loc.id.toLowerCase().includes(eventLocation);
+                        });
+                        
+                        if (partialMatch) {
+                            locationId = partialMatch.id;
+                        } else {
+                            console.warn(`Could not find location for: ${event.location}`);
+                            console.log('Available locations:', locations.map(l => `${l.id} (${l.name})`).join(', '));
+                        }
+                    }
+                }
+                
+                // Only create location link if we have a valid locationId
+                const locationHtml = locationId
+                    ? `<a href="#" class="event-location" 
+                          onclick="event.stopPropagation(); focusOnLocation('${locationId}'); return false;" 
+                          title="View on map">
+                           <i class="fas fa-map-marker-alt"></i> ${event.location}
+                       </a>`
+                    : `<span class="event-location no-link" title="Location not available on map">
+                          <i class="fas fa-map-marker-alt"></i> ${event.location}
+                      </span>`;
                 
                 li.innerHTML = `
                     <div class="event-header">
@@ -2171,9 +2231,7 @@
                             <span class="event-date" title="${formattedDate} at ${formattedTime}">
                                 <i class="far fa-calendar-alt"></i> ${formattedDate}
                             </span>
-                            <a href="${locationLink}" class="event-location" title="View on map">
-                                <i class="fas fa-map-marker-alt"></i> ${event.location}
-                            </a>
+                            ${locationHtml}
                         </div>
                     </div>
                     <div class="event-details">
@@ -2221,7 +2279,7 @@
             eventsContent.appendChild(eventList);
         }
         
-        // Campus locations data - these should match your event locations
+        // Campus locations data - these should match locations.html exactly
         // Ordered with bhavans and key locations first
         const locations = [
             // Bhavans (in priority order)
@@ -2230,17 +2288,17 @@
             { id: 'kl-rao', name: 'KL Rao Bhavan' },
             { id: 'billgates', name: 'Billgates Bhavan' },
             { id: 'viswesaraya', name: 'Viswesaraya Bhavan' },
-            { id: 'bhaskara', name: 'Bhaskara Bhavan' },
+            { id: 'bhaskara-bhavan', name: 'Bhaskara Bhavan' },
             { id: 'cv-raman', name: 'CV Raman Bhavan' },
             { id: 'ramanujan', name: 'Ramanujan Bhavan' },
             { id: 'james-watt', name: 'James Watt Bhavan' },
             { id: 'newton', name: 'Newton Bhavan' },
             { id: 'edison', name: 'Edison Bhavan' },
-            { id: 'abdul-kalam', name: 'Abdul Kalam Bhavan' },
+            { id: 'abdul-kalam-bhavan', name: 'Abdul Kalam Bhavan' },
             
             // Key academic and administrative buildings
             { id: 'agbs', name: 'AGBS' },
-            { id: 'polytechnic', name: 'Polytechnic College' },
+            { id: 'polytechnic-college', name: 'Polytechnic College' },
             { id: 'technical-hub', name: 'Technical Hub' },
             
             // Hostels
@@ -2260,21 +2318,74 @@
             { id: 'temple', name: 'Temple' }
         ];
 
-
-        // Initialize the app when DOM is loaded
-        // File input change handler
-        document.getElementById('event-file').addEventListener('change', function(e) {
-            const fileName = e.target.files.length > 0 
-                ? e.target.files[0].name 
-                : 'No file selected';
-            document.getElementById('file-name').textContent = fileName;
-        });
-
-        document.addEventListener('DOMContentLoaded', initApp);
+        // Function to focus on a specific location on the map
+        function focusOnLocation(locationId) {
+            console.log('focusOnLocation called with:', locationId);
+            
+            // Early return if no locationId or if it's not a string
+            if (!locationId || typeof locationId !== 'string') {
+                console.error('Invalid location ID provided for focusing:', locationId);
+                return false;
+            }
+            
+            // Convert location ID to lowercase for case-insensitive comparison
+            locationId = locationId.toLowerCase().trim();
+            
+            // If locationId is empty after trimming, show error
+            if (!locationId) {
+                console.error('Empty location ID provided for focusing');
+                return false;
+            }
+            
+            // Check if location exists in our locations array
+            const location = locations.find(loc => loc.id === locationId);
+            
+            if (!location) {
+                console.error(`Location with ID '${locationId}' not found in locations`);
+                console.log('Available locations:', locations.map(loc => loc.id));
+                showToast(`Location not found: ${locationId}`, true);
+                return false;
+            }
+            
+            try {
+                // Store the location ID in session storage
+                console.log('Storing location in session storage:', locationId);
+                sessionStorage.setItem('focusLocation', locationId);
+                
+                // If we're already on the locations page, just update the hash
+                if (window.location.pathname.endsWith('locations.html')) {
+                    console.log('Already on locations page, updating hash');
+                    window.location.hash = locationId;
+                    return false;
+                }
+                
+                // Otherwise, navigate to the locations page with the location hash
+                console.log('Navigating to locations page with hash:', locationId);
+                window.location.href = `locations.html#${locationId}`;
+                return false;
+            } catch (error) {
+                console.error('Error in focusOnLocation:', error);
+                showToast('Failed to focus on location. Please try again.', true);
+                return false;
+            }
+        }
         
-        // Handle window resize
-        window.addEventListener('resize', () => {
-            updateToggleButtonVisibility();
+        // Initialize the application when the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // File input change handler
+            document.getElementById('event-file').addEventListener('change', function(e) {
+                const fileName = e.target.files.length > 0 
+                    ? e.target.files[0].name 
+                    : 'No file selected';
+                document.getElementById('file-name').textContent = fileName;
+            });
+
+            initApp();
+        
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                updateToggleButtonVisibility();
+            });
         });
     </script>
 </body>
