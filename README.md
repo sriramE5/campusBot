@@ -1,4 +1,6 @@
 # CampusBot - University Campus Assistant
+<img width="1919" height="918" alt="image" src="https://github.com/user-attachments/assets/0431dfff-9931-40d4-85b2-8dfb323cd412" />
+<img width="1919" height="918" alt="image" src="https://github.com/user-attachments/assets/06a01a73-8a5c-4e3e-ad4a-26a23c5a2c28" />
 
 
 githublink : https://github.com/sriramE5/campusBot
