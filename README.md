@@ -1,6 +1,4 @@
-<<<<<<< HEAD
-# CampusBot - University Campus Assistant 🤖
-=======
+
 # CampusBot - University Campus Assistant
 <img width="1919" height="918" alt="image" src="https://github.com/user-attachments/assets/0431dfff-9931-40d4-85b2-8dfb323cd412" />
 <img width="1916" height="904" alt="image" src="https://github.com/user-attachments/assets/bb1417ea-a3aa-489e-8348-5b96671af631" />
