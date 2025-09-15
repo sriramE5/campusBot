@@ -1,4 +1,75 @@
+<<<<<<< HEAD
 # CampusBot - University Campus Assistant 🤖
+=======
+# CampusBot - University Campus Assistant
+<img width="1919" height="918" alt="image" src="https://github.com/user-attachments/assets/0431dfff-9931-40d4-85b2-8dfb323cd412" />
+<img width="1916" height="904" alt="image" src="https://github.com/user-attachments/assets/bb1417ea-a3aa-489e-8348-5b96671af631" />
+
+
+
+githublink : https://github.com/sriramE5/campusBot
+## 📱 Application Overview
+
+CampusBot is an intelligent virtual assistant designed specifically for Aditya University, providing a seamless interface for students, faculty, and visitors to access campus information, events, and services. The application combines AI-powered chat functionality with comprehensive campus resources to enhance the university experience.
+
+### Key Components:
+- **Interactive Chat Interface**: Natural language processing for intuitive Q&A
+- **Campus Navigation**: Interactive maps and location services
+- **Event Management System**: Comprehensive calendar and event tracking
+- **Administrative Dashboard**: Secure interface for content management
+- **Knowledge Repository**: Centralized access to university information
+
+## 🗺️ Campus Maps & Navigation
+
+The application features an interactive campus map system that helps users:
+- Locate buildings, departments, and facilities
+- Access detailed information about each location
+- View location-specific resources
+
+The map interface is integrated with the chat system, allowing users to ask questions like "Where is the library?" and receive both a text response and a visual map location.
+
+## 👨‍💼 Admin Features
+
+The admin panel provides authorized personnel with powerful tools to manage the application:
+
+### User Management
+- Create and manage admin accounts
+- Set access levels and permissions
+- Monitor user activity and interactions
+
+### Content Management
+- Update knowledge base documents
+- Manage FAQ database
+- Moderate user-generated content
+- Track content updates and revisions
+
+### System Configuration
+- Configure application settings
+- Manage integrations with other university systems
+- Set up automated notifications and alerts
+
+### Analytics Dashboard
+- View usage statistics
+- Track popular queries and searches
+- Generate reports on system performance
+
+## 🗓️ Events System
+
+The comprehensive event management system allows for:
+
+### Event Creation & Management
+- Add, edit, and remove events
+- Set event details (date, time, location, description)
+- Categorize events (academic, social, sports, etc.)
+- Upload event images and attachments
+
+### Event Discovery
+- Browse upcoming events
+- Filter by category, date, or location
+- Save events to personal calendar
+- Set event reminders
+
+>>>>>>> a1ecae0d728aea56486f22db1885b2274898897d
 
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-blue?style=flat&logo=github)](https://github.com/sriramE5/campusBot)
 [![Python](https://img.shields.io/badge/Python-3.13%2B-blue?logo=python)](https://www.python.org/)
