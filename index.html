@@ -3,53 +3,109 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Landing Page</title>
+<title>Login</title>
 
 <style>
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
+body {
+    font-family: Arial;
+    background: #f0f0f0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
 }
 
-body,html{
-    height:100%;
-    font-family: Arial, sans-serif;
+/* Header Image */
+.header-img {
+    width: 616px;
+    height: 100px;
+    object-fit: contain;
+    margin-bottom: 20px;
 }
 
-.hero{
-    height:100vh;
-    background-image:url("https://universityinnovation.org/images/1/1a/Logo1.jpg");
-    background-size:cover;
-    background-position:center;
-    display:flex;
-    justify-content:center;
-    align-items:center;
+/* Login Box */
+.login-form {
+    background: white;
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    width: 300px;
 }
 
-.explore-btn{
-    padding:15px 40px;
-    font-size:20px;
-    border:none;
-    border-radius:30px;
-    background:#ffffff;
-    color:#000;
-    cursor:pointer;
-    transition:0.3s;
+input {
+    width: 100%;
+    padding: 12px;
+    margin: 10px 0;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-sizing: border-box;
 }
 
-.explore-btn:hover{
-    background:#000;
-    color:#fff;
+button {
+    width: 100%;
+    padding: 12px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #0056b3;
+}
+
+.message {
+    text-align: center;
+    margin-top: 10px;
+    color: red;
 }
 </style>
 </head>
 
 <body>
 
-<div class="hero">
-    <a href="frontend/index.html" class="explore-btn">Explore</a>
+<!-- Header Logo -->
+<img src="https://in8cdn.npfs.co/uploads/template/6102/1555/publish/images/Logo.png?1770639862"
+     class="header-img"
+     alt="Logo">
+
+<div class="login-form">
+<h2>Login</h2>
+
+<form id="loginForm">
+<input type="text" id="username" placeholder="Username" required>
+<input type="password" id="password" placeholder="Password" required>
+<button type="submit">Login</button>
+<div id="message" class="message"></div>
+</form>
+
 </div>
+
+<script>
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const message = document.getElementById('message');
+
+    if (username === 'admin' && password === '1234') {
+        message.textContent = 'Login successful! Redirecting...';
+        message.style.color = 'green';
+
+        setTimeout(() => {
+            window.location.href = 'frontend/index.html';
+        }, 1000);
+
+    } else {
+        message.textContent = 'Wrong username or password!';
+        message.style.color = 'red';
+    }
+});
+</script>
 
 </body>
 </html>
