@@ -6,62 +6,85 @@
 <title>Login</title>
 
 <style>
-body {
-    font-family: Arial;
-    background: #f0f0f0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    margin: 0;
+
+*{
+    box-sizing:border-box;
 }
 
-/* Header Image */
-.header-img {
-    width: 616px;
-    height: 100px;
-    object-fit: contain;
-    margin-bottom: 20px;
+body{
+    font-family:Arial, sans-serif;
+    background:#f0f0f0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    margin:0;
+    padding:20px;
 }
 
-/* Login Box */
-.login-form {
-    background: white;
-    padding: 40px;
-    border-radius: 10px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    width: 300px;
+/* Responsive Logo */
+.header-img{
+    width:100%;
+    max-width:616px;
+    height:auto;
+    margin-bottom:20px;
 }
 
-input {
-    width: 100%;
-    padding: 12px;
-    margin: 10px 0;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    box-sizing: border-box;
+/* Login Card */
+.login-form{
+    background:white;
+    padding:30px;
+    border-radius:10px;
+    box-shadow:0 0 10px rgba(0,0,0,0.1);
+    width:100%;
+    max-width:350px;
 }
 
-button {
-    width: 100%;
-    padding: 12px;
-    background: #007bff;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
+/* Inputs */
+input{
+    width:100%;
+    padding:12px;
+    margin:10px 0;
+    border:1px solid #ddd;
+    border-radius:5px;
+    font-size:16px;
 }
 
-button:hover {
-    background: #0056b3;
+/* Button */
+button{
+    width:100%;
+    padding:12px;
+    background:#007bff;
+    color:white;
+    border:none;
+    border-radius:5px;
+    cursor:pointer;
+    font-size:16px;
 }
 
-.message {
-    text-align: center;
-    margin-top: 10px;
-    color: red;
+button:hover{
+    background:#0056b3;
 }
+
+.message{
+    text-align:center;
+    margin-top:10px;
+}
+
+/* Mobile adjustments */
+@media (max-width:480px){
+
+.login-form{
+    padding:20px;
+}
+
+h2{
+    text-align:center;
+}
+
+}
+
 </style>
 </head>
 
@@ -69,42 +92,55 @@ button:hover {
 
 <!-- Header Logo -->
 <img src="https://in8cdn.npfs.co/uploads/template/6102/1555/publish/images/Logo.png?1770639862"
-     class="header-img"
-     alt="Logo">
+class="header-img"
+alt="Logo">
 
 <div class="login-form">
+
 <h2>Login</h2>
 
 <form id="loginForm">
+
 <input type="text" id="username" placeholder="Username" required>
+
 <input type="password" id="password" placeholder="Password" required>
+
 <button type="submit">Login</button>
+
 <div id="message" class="message"></div>
+
 </form>
 
 </div>
 
 <script>
-document.getElementById('loginForm').addEventListener('submit', function(e) {
-    e.preventDefault();
 
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-    const message = document.getElementById('message');
+document.getElementById('loginForm').addEventListener('submit',function(e){
 
-    if (username === 'admin' && password === '1234') {
-        message.textContent = 'Login successful! Redirecting...';
-        message.style.color = 'green';
+e.preventDefault();
 
-        setTimeout(() => {
-            window.location.href = 'frontend/index.html';
-        }, 1000);
+const username=document.getElementById('username').value;
+const password=document.getElementById('password').value;
+const message=document.getElementById('message');
 
-    } else {
-        message.textContent = 'Wrong username or password!';
-        message.style.color = 'red';
-    }
+if(username==='admin' && password==='1234'){
+
+message.textContent='Login successful! Redirecting...';
+message.style.color='green';
+
+setTimeout(()=>{
+window.location.href='frontend/index.html';
+},1000);
+
+}else{
+
+message.textContent='Wrong username or password!';
+message.style.color='red';
+
+}
+
 });
+
 </script>
 
 </body>
