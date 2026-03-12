@@ -15,9 +15,9 @@ from pydantic import BaseModel
 from jose import jwt, JWTError
 
 from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader, UnstructuredWordDocumentLoader, UnstructuredHTMLLoader, JSONLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from langchain.docstore.document import Document
+from langchain_core.documents import Document
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 
 from watchdog.observers import Observer
@@ -238,6 +238,10 @@ def startup_event():
     watcher_thread.start()
 
 
+
+@app.get("/")
+async def root():
+    return {"message": "CampusBot Backend API", "docs": "/docs", "version": "1.0.0"}
 
 # Chat endpoint(RAG)
 
