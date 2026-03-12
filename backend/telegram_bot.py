@@ -13,22 +13,20 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Load environment variables
+
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 
-# Configuration
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-API_BASE_URL = "http://localhost:8000"  # Update this if your API runs on a different URL
+API_BASE_URL = "http://localhost:8000"
 
 if not TELEGRAM_BOT_TOKEN:
     raise ValueError("TELEGRAM_BOT_TOKEN environment variable not set")
 
-# Command handlers
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send a welcome message when the command /start is issued."""
+
     welcome_message = (
-        "👋 Welcome to Campus Bot!\n\n"
+        " Welcome to Campus Bot!\n\n"
         "I can help you with information about the campus, events, and more.\n\n"
         "Here are some commands you can use:\n"
         "/events - List upcoming campus events\n"
@@ -39,9 +37,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send a message when the command /help is issued."""
+   
     help_text = (
-        "🤖 *Campus Bot Help*\n\n"
+        "*Campus Bot Help*\n\n"
         "*Commands:*\n"
         "/start - Start the bot and see welcome message\n"
         "/events - List upcoming campus events\n"
@@ -91,13 +89,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
     
     try:
-        # Show typing indicator
         await context.bot.send_chat_action(
             chat_id=update.effective_chat.id, 
             action="typing"
         )
-        
-        # Call the chatbot API
+
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{API_BASE_URL}/chat",
@@ -107,9 +103,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             response.raise_for_status()
             bot_response = response.json().get("response", "I'm not sure how to respond to that.")
             
-            # Split long messages to avoid hitting Telegram's message length limit
             if len(bot_response) > 4000:
-                # Split by double newlines first to keep paragraphs together
                 parts = bot_response.split('\n\n')
                 current_part = ""
                 
@@ -119,8 +113,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                         current_part = part + "\n\n"
                     else:
                         current_part += part + "\n\n"
-                
-                # Send any remaining text
+    
                 if current_part.strip():
                     await update.message.reply_text(current_part.strip())
             else:
@@ -134,31 +127,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 
 def main() -> None:
-    """Start the bot."""
-    # Create the Application
     application = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
-
-    # Add command handlers
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("events", list_events))
     
-    # Add message handler for all text messages that are not commands
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    
-    # Log all errors
+ 
     application.add_error_handler(error_handler)
     
-    # Start the Bot
     logger.info("Starting bot...")
     application.run_polling()
 
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Log Errors caused by Updates."""
     logger.error("Exception while handling an update:", exc_info=context.error)
     
-    # Only send error message if there's a chat to send it to
     if update and hasattr(update, 'message') and update.message:
         await update.message.reply_text(
             "An error occurred while processing your request. The developers have been notified."

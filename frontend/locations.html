@@ -191,7 +191,6 @@
                 <i class="fas fa-search"></i>
             </div>
             <div id="locations-list">
-                <!-- Locations will be populated by JavaScript -->
             </div>
         </div>
     </div>
@@ -199,10 +198,8 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol@0.78.0/dist/L.Control.Locate.min.js"></script>
     <script>
-        // Campus locations data - these should match your event locations
-        // Ordered with bhavans and key locations first
+
         const locations = [
-            // Bhavans (in priority order)
             { id: 'ratan-tata', name: 'Ratan Tata Bhavan', lat: 17.087863167643086, lng: 82.06640399381214 },
             { id: 'cotton', name: 'Cotton Bhavan', lat: 17.08792469891925, lng: 82.0668492406757 },
             { id: 'kl-rao', name: 'KL Rao Bhavan', lat: 17.08890919657121, lng: 82.06705845281687 },
@@ -214,52 +211,40 @@
             { id: 'james-watt', name: 'James Watt Bhavan', lat: 17.092918919774487, lng: 82.06620014588847 },
             { id: 'newton', name: 'Newton Bhavan', lat: 17.093626509026613, lng: 82.06654346865862 },
             { id: 'edison', name: 'Edison Bhavan', lat: 17.090201341863114, lng: 82.07086718971647 },
-            { id: 'abdul-kalam-bhavan', name: 'Abdul Kalam Bhavan', lat: 17.08977821473724, lng: 82.07054391507901 },
-            
-            // Key academic and administrative buildings
+            { id: 'abdul-kalam-bhavan', name: 'Abdul Kalam Bhavan', lat: 17.08977821473724, lng: 82.07054391507901 },     
             { id: 'agbs', name: 'AGBS', lat: 17.089596290822936, lng: 82.07173622547839 },
             { id: 'polytechnic-college', name: 'Polytechnic College', lat: 17.08892703873516, lng: 82.07224980012961 },
             { id: 'technical-hub', name: 'Technical Hub', lat: 17.087740105019247, lng: 82.06886089733018 },
-            
-            // Hostels
             { id: 'boys-hostel', name: 'Boys Hostel', lat: 17.091773169636863, lng: 82.06917498393841 },
             { id: 'girl-hostel', name: 'Girls Hostel', lat: 17.08802725099051, lng: 82.07067407070998 },
-            
-            // Grounds and outdoor areas
             { id: 'kl-rao-ground', name: 'KL Rao Ground', lat: 17.088957804210455, lng: 82.06792607895672 },
             { id: 'bped-ground', name: 'BPED Ground', lat: 17.09112162917562, lng: 82.0721317828909 },
             { id: 'gallery-ground', name: 'Gallery Ground', lat: 17.089860255581016, lng: 82.0688916742842 },
             { id: 'bus-ground', name: 'Bus Ground', lat: 17.091008823745277, lng: 82.0707692206834 },
-            
-            // Other locations
             { id: 'gallery', name: 'Gallery', lat: 17.089676360656743, lng: 82.06756416422398 },
             { id: 'mango-garden', name: 'Mango Garden', lat: 17.090844743012365, lng: 82.06845179198498 },
             { id: 'apollo', name: 'Apollo Sunshine Health Care', lat: 17.08973986243556, lng: 82.07053459575654 },
             { id: 'temple', name: 'Temple', lat: 17.09074766689225, lng: 82.06951294240847 }
         ];
 
-        // Initialize map variables
         let map;
         let markers = [];
         let activeLocation = null;
-        let events = []; // Will store events from the backend
-        const API_BASE_URL = 'http://127.0.0.1:8000'; // Match this with your backend URL
+        let events = []; 
+        const API_BASE_URL = 'http://127.0.0.1:8000';
         
-        // User location marker and circle
         let userMarker = null;
         let userAccuracyCircle = null;
         let watchId = null;
         
-        // Initialize the map after DOM is fully loaded
         document.addEventListener('DOMContentLoaded', function() {
             map = L.map('map').setView([17.090489589089355, 82.06848498587007], 17);
             
-            // Add OpenStreetMap tiles
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
             
-            // Add locate control
+
             const locateControl = L.control.locate({
                 position: 'topleft',
                 drawCircle: false,
@@ -290,22 +275,16 @@
                     timeout: 10000
                 }
             }).addTo(map);
-            
-            // Start watching user's location
             locateControl.start();
-            
-            // Initialize markers and load events
             addMarkers();
             loadEvents();
             
-            // Add click handler for event items to toggle details
             document.addEventListener('click', function(e) {
                 const eventSummary = e.target.closest('.event-summary');
                 if (eventSummary) {
                     const eventItem = eventSummary.parentElement;
                     eventItem.classList.toggle('expanded');
                     
-                    // Close other expanded items
                     if (eventItem.classList.contains('expanded')) {
                         document.querySelectorAll('.event-item.expanded').forEach(expandedItem => {
                             if (expandedItem !== eventItem) {
@@ -317,14 +296,11 @@
             });
         });
 
-        // Function to get events for a specific location
         function getEventsForLocation(locationName) {
             return events.filter(event => 
                 event.location.toLowerCase() === locationName.toLowerCase()
             );
         }
-
-        // Format date as dd/mm/yy
         function formatDate(dateString) {
             const date = new Date(dateString);
             const day = String(date.getDate()).padStart(2, '0');
@@ -333,7 +309,6 @@
             return `${day}/${month}/${year}`;
         }
 
-        // Function to create popup content with events
         function createPopupContent(location) {
             const locationEvents = getEventsForLocation(location.name);
             let content = `<b>${location.name}</b>`;
@@ -363,32 +338,25 @@
             
             return content;
         }
-
-        // Function to add markers to the map
         function addMarkers() {
             locations.forEach(location => {
                 const marker = L.marker([location.lat, location.lng], {
                     title: location.name
                 }).addTo(map);
-                
-                // Bind popup with events
                 marker.bindPopup(createPopupContent(location));
-                
-                // Store reference to marker
+
                 markers.push({
                     id: location.id,
                     marker: marker,
                     name: location.name,
                     location: location
                 });
-                
-                // Add to locations list
+
                 const locationItem = document.createElement('div');
                 locationItem.className = 'location-item';
                 locationItem.textContent = location.name;
                 locationItem.dataset.id = location.id;
-                
-                // Add event count badge if there are events
+
                 const locationEvents = getEventsForLocation(location.name);
                 if (locationEvents.length > 0) {
                     const badge = document.createElement('span');
@@ -398,24 +366,18 @@
                 }
                 
                 locationItem.addEventListener('click', () => {
-                    // Center map on selected location
                     map.setView([location.lat, location.lng], 18);
-                    
-                    // Highlight selected location
+
                     document.querySelectorAll('.location-item').forEach(item => {
                         item.classList.remove('active');
                     });
                     locationItem.classList.add('active');
-                    
-                    // Open popup
                     marker.openPopup();
                 });
                 
                 document.getElementById('locations-list').appendChild(locationItem);
             });
         }
-
-        // Function to update popups with latest events
         function updatePopups() {
             markers.forEach(markerData => {
                 const location = locations.find(loc => loc.id === markerData.id);
@@ -424,8 +386,6 @@
                 }
             });
         }
-
-        // Load events from backend
         async function loadEvents() {
             try {
                 const response = await fetch(`${API_BASE_URL}/events`);
@@ -436,8 +396,6 @@
                 console.error('Error loading events:', error);
             }
         }
-
-        // Search functionality
         document.getElementById('location-search').addEventListener('input', (e) => {
             const searchTerm = e.target.value.toLowerCase();
             const locationItems = document.querySelectorAll('.location-item');
@@ -452,10 +410,9 @@
             });
         });
 
-        // Add some styles for event items in popups
         const style = document.createElement('style');
         style.textContent = `
-            /* Event popup styles */
+            
             .location-events {
                 margin-top: 12px;
                 max-height: 300px;
@@ -561,9 +518,7 @@
             }
         `;
         document.head.appendChild(style);
-        
-        // Function to handle URL parameters for location highlighting
-        function checkUrlForLocation() {
+                function checkUrlForLocation() {
             const params = new URLSearchParams(window.location.search);
             const locationId = params.get('location');
             if (locationId) {
@@ -573,7 +528,6 @@
                     map.setView([location.lat, location.lng], 18);
                     markerData.marker.openPopup();
                     
-                    // Highlight in the list
                     const locationItems = document.querySelectorAll('.location-item');
                     locationItems.forEach(item => {
                         item.classList.remove('active');
@@ -586,43 +540,32 @@
             }
         }
         
-        // Function to focus on a specific location
         function focusLocation(locationId) {
             if (!locationId) {
                 console.error('No location ID provided for focusing');
                 return false;
             }
-            
-            // Try to find the location in the sidebar list first
             let locationElement = document.querySelector(`.location-item[data-id="${locationId}"]`);
             
-            // If not found in sidebar, try to find by ID
+
             if (!locationElement) {
                 locationElement = document.getElementById(locationId);
             }
             
-            // If element not found, it might be because the map is not fully loaded yet
             if (!locationElement) {
                 console.log(`Location element ${locationId} not found, will retry...`);
-                // Try again after a short delay
                 setTimeout(() => focusLocation(locationId), 500);
                 return false;
             }
             
             try {
-                // Update URL without adding to browser history
                 history.replaceState(null, null, `#${locationId}`);
-                
-                // Scroll to the location in the sidebar
                 locationElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                
-                // Highlight the location in the sidebar
                 document.querySelectorAll('.location-item').forEach(item => {
                     item.classList.remove('active');
                 });
                 locationElement.classList.add('active');
                 
-                // Find the corresponding marker and open its popup
                 const marker = markers.find(m => m.id === locationId);
                 if (marker) {
                     map.setView(marker.marker.getLatLng(), 18);
@@ -637,37 +580,29 @@
                 return false;
             }
         }
-        
-        // Make it available globally
         window.focusOnLocation = focusLocation;
-        
-        // Check for location in URL when page loads
+
         document.addEventListener('DOMContentLoaded', function() {
-            // Function to handle location focusing
+
             const handleLocationFocus = () => {
-                // First check URL hash
                 if (window.location.hash) {
                     const locationId = window.location.hash.substring(1);
                     if (focusLocation(locationId)) {
                         return;
                     }
                 }
-                
-                // Then check session storage (in case we came from index.html)
+
                 const savedLocation = sessionStorage.getItem('focusLocation');
                 if (savedLocation) {
                     if (focusLocation(savedLocation)) {
-                        // Clear the saved location after using it
                         sessionStorage.removeItem('focusLocation');
                         return;
                     }
                 }
             };
             
-            // Initial check after a short delay to ensure map is loaded
             setTimeout(handleLocationFocus, 500);
-            
-            // Also handle hash changes
+
             window.addEventListener('hashchange', handleLocationFocus);
         });
     </script>

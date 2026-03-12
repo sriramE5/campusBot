@@ -14,39 +14,31 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from jose import jwt, JWTError
 
-# LangChain & Google Gemini integration
 from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader, UnstructuredWordDocumentLoader, UnstructuredHTMLLoader, JSONLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain.docstore.document import Document
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 
-# File system watcher
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-
-# Load environment
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 
-# Required environment variables (placeholders in .env)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "changeme")
 SECRET_KEY = os.getenv("SECRET_KEY", "devsecret")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
-
-# Ensure Gemini env var reachable by libs that check GOOGLE_API_KEY or GEMINI_API_KEY
 if GEMINI_API_KEY:
     os.environ.setdefault("GEMINI_API_KEY", GEMINI_API_KEY)
     os.environ.setdefault("GOOGLE_API_KEY", GEMINI_API_KEY)
 
 app = FastAPI(title="Full-Stack Campus Helper - Backend")
 
-# Allow the frontend dev server(s). Adjust as needed.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # allow all for dev
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -62,25 +54,20 @@ FAISS_DIR.mkdir(exist_ok=True)
 
 EVENTS_FILE = DATA_DIR / "events.json"
 
-# RAG / Embedding model configuration
+# RAG configuration
 EMBEDDING_MODEL = "models/gemini-embedding-001"
 LLM_MODEL = "gemini-2.5-flash"
 
-# Application state
 app.state.vectorstore: Optional[FAISS] = None
 app.state.embeddings = None
 
-
-# ------------------------
-# Pydantic models
-# ------------------------
 class ChatRequest(BaseModel):
     message: str
 
 
 class EventIn(BaseModel):
     name: str
-    date: str  # ISO format YYYY-MM-DD
+    date: str  
     location: str
     details: str
 
@@ -94,9 +81,7 @@ class LoginRequest(BaseModel):
     password: str
 
 
-# ------------------------
-# Utility: events file read/write
-# ------------------------
+
 def read_events() -> List[Event]:
     if not EVENTS_FILE.exists():
         EVENTS_FILE.write_text("[]", encoding="utf-8")
@@ -113,18 +98,13 @@ def write_events(events: List[Event]):
     with open(EVENTS_FILE, "w", encoding="utf-8") as f:
         json.dump([e.dict() for e in events], f, indent=2, ensure_ascii=False)
 
-
-# ------------------------
 # Authentication (JWT)
-# ------------------------
-# Check for this type of issue right before your function starts
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
-# There should be no misplaced characters here, and the indentation for the next function should be correct.
 async def admin_required(authorization: Optional[str] = Header(None)):
     """Dependency to protect admin endpoints."""
     if not authorization:
@@ -140,15 +120,10 @@ async def admin_required(authorization: Optional[str] = Header(None)):
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
-
-# ------------------------
-# RAG Index functions
-# ------------------------
 def build_faiss_index():
     """Build FAISS vector store from knowledge_base files."""
-    print("Building FAISS index from knowledge_base...")
-    
-    # Use different loaders for different file types
+    print("Building FAISS index from knowledge_base...") 
+
     loaders = {
         ".pdf": PyPDFLoader,
         ".docx": UnstructuredWordDocumentLoader,
@@ -165,8 +140,7 @@ def build_faiss_index():
             if file_extension == ".txt":
                 loader = DirectoryLoader(str(KB_DIR), glob=f"**/*{file_extension}")
                 raw_docs = loader.load()
-            else: # .json
-                # This glob pattern needs a dedicated loader instance
+            else: 
                 for file_path in KB_DIR.glob(f'**/*{file_extension}'):
                     try:
                         loader = JSONLoader(file_path=str(file_path), jq_schema='.', text_content=False)
@@ -174,7 +148,7 @@ def build_faiss_index():
                         all_docs.extend(raw_docs)
                     except Exception as e:
                         print(f"Failed to load JSON file {file_path}: {e}")
-                continue # Skip the general loader
+                continue
         else:
             loader = DirectoryLoader(str(KB_DIR), glob=f"**/*{file_extension}", loader_cls=loader_class)
             raw_docs = loader.load()
@@ -211,14 +185,11 @@ def load_faiss_index_if_exists():
         return None
 
 
-# ------------------------
-# File Watcher
-# ------------------------
+
 class KnowledgeBaseEventHandler(FileSystemEventHandler):
     def on_created(self, event):
         if not event.is_directory:
             print(f"New file detected: {event.src_path}. Re-indexing...")
-            # Use a background task or a separate thread to avoid blocking the main server loop
             build_faiss_index()
 
 def start_file_watcher():
@@ -235,12 +206,8 @@ def start_file_watcher():
     observer.join()
 
 
-# ------------------------
-# Startup
-# ------------------------
 @app.on_event("startup")
 def startup_event():
-    # Seed events.json if empty
     if not EVENTS_FILE.exists() or EVENTS_FILE.stat().st_size == 0:
         sample_events = [
             {
@@ -266,18 +233,17 @@ def startup_event():
             build_faiss_index()
         except Exception as exc:
             print("Error during FAISS index build:", exc)
-    
-    # Start the file watcher in a new thread
+
     watcher_thread = threading.Thread(target=start_file_watcher, daemon=True)
     watcher_thread.start()
 
 
-# ------------------------
-# Chat endpoint (RAG)
-# ------------------------
+
+# Chat endpoint(RAG)
+
 @app.options("/chat")
 async def chat_options():
-    """Handle preflight requests for /chat"""
+    
     return JSONResponse(content={"message": "ok"})
 
 
@@ -303,11 +269,12 @@ async def chat_endpoint(chat_req: ChatRequest):
     events_json = json.dumps([e.dict() for e in events], indent=2, ensure_ascii=False)
 
     system_message = (
-        "You are Campus Helper Chatbot of Aditya University. Answer relevant content from provided context.\n"
+        "You are Campus AI assistant of Aditya University. Answer relevant content from provided context.\n"
         "structured JSON data is provided for upcoming events. Use it to answer event-related queries.\n"
         "If the answer is not in the context, respond with 'I don't know'. Be concise."
         "Use formal language suitable for students and faculty."
         "semantic search the documents for relevant info."
+        "respond for every user query even it is not related to context. Do not say I don't know. Be creative."
     )
 
     docs_block = "\n\n--- DOCUMENTS ---\n"
@@ -331,10 +298,6 @@ async def chat_endpoint(chat_req: ChatRequest):
 
     return {"response": text}
 
-
-# ------------------------
-# Events endpoints
-# ------------------------
 @app.get("/events")
 async def get_events():
     return [e.dict() for e in read_events()]
@@ -348,32 +311,14 @@ async def add_event(event_in: EventIn, auth=Depends(admin_required)):
     write_events(events)
     return new_event.dict()
 
-
-@app.delete("/events/{event_id}", status_code=204)
-async def delete_event(event_id: str, auth=Depends(admin_required)):
-    events = read_events()
-    filtered = [e for e in events if e.id != event_id]
-    if len(filtered) == len(events):
-        raise HTTPException(status_code=404, detail="Event not found")
-    write_events(filtered)
-    return None
-
-
-# ------------------------
-# Admin: login (get JWT)
-# ------------------------
 @app.post("/login")
-async def login(req: LoginRequest):
-    if req.username != "admin" or req.password != ADMIN_PASSWORD:
+async def login(login_request: LoginRequest):
+    if login_request.username != "admin" or login_request.password != ADMIN_PASSWORD:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
 
     access_token = create_access_token(data={"sub": "admin"}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     return {"access_token": access_token, "token_type": "bearer"}
 
-
-# ------------------------
-# Admin: reindex endpoint
-# ------------------------
 @app.post("/admin/reindex")
 async def reindex(background_tasks: BackgroundTasks, auth=Depends(admin_required)):
     background_tasks.add_task(build_faiss_index)

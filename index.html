@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login</title>
+
+<style>
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    font-family:Arial, sans-serif;
+    background:#f0f0f0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    margin:0;
+    padding:20px;
+}
+
+/* Responsive Logo */
+.header-img{
+    width:100%;
+    max-width:616px;
+    height:auto;
+    margin-bottom:20px;
+}
+
+/* Login Card */
+.login-form{
+    background:white;
+    padding:30px;
+    border-radius:10px;
+    box-shadow:0 0 10px rgba(0,0,0,0.1);
+    width:100%;
+    max-width:350px;
+}
+
+/* Inputs */
+input{
+    width:100%;
+    padding:12px;
+    margin:10px 0;
+    border:1px solid #ddd;
+    border-radius:5px;
+    font-size:16px;
+}
+
+/* Button */
+button{
+    width:100%;
+    padding:12px;
+    background:#0C6AB0;
+    color:white;
+    border:none;
+    border-radius:5px;
+    cursor:pointer;
+    font-size:16px;
+}
+
+button:hover{
+    background:#0C6AB0;
+}
+
+.message{
+    text-align:center;
+    margin-top:10px;
+}
+
+/* Mobile adjustments */
+@media (max-width:480px){
+
+.login-form{
+    padding:20px;
+}
+
+h2{
+    text-align:center;
+}
+
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- Header Logo -->
+<img src="https://in8cdn.npfs.co/uploads/template/6102/1555/publish/images/Logo.png?1770639862"
+class="header-img"
+alt="Logo">
+
+<div class="login-form">
+
+<h2>CampusBot</h2>
+
+<form id="loginForm">
+
+<input type="text" id="username" placeholder="Username" required>
+
+<input type="password" id="password" placeholder="Password" required>
+
+<button type="submit">Login</button>
+
+<div id="message" class="message"></div>
+
+</form>
+
+</div>
+
+<script>
+
+document.getElementById('loginForm').addEventListener('submit',function(e){
+
+e.preventDefault();
+
+const username=document.getElementById('username').value;
+const password=document.getElementById('password').value;
+const message=document.getElementById('message');
+
+if(username==='admin' && password==='1234'){
+
+message.textContent='Login successful! Redirecting...';
+message.style.color='green';
+
+setTimeout(()=>{
+window.location.href='frontend/index.html';
+},1000);
+
+}else{
+
+message.textContent='Wrong username or password!';
+message.style.color='red';
+
+}
+
+});
+
+</script>
+
+</body>
+</html>
