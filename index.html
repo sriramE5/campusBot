@@ -114,33 +114,50 @@ alt="Logo">
 </div>
 
 <script>
+// Environment configuration
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? 'http://localhost:8000' 
+    : 'https://your-backend-domain.com';
 
-document.getElementById('loginForm').addEventListener('submit',function(e){
-
-e.preventDefault();
-
-const username=document.getElementById('username').value;
-const password=document.getElementById('password').value;
-const message=document.getElementById('message');
-
-if(username==='admin' && password==='1234'){
-
-message.textContent='Login successful! Redirecting...';
-message.style.color='green';
-
-setTimeout(()=>{
-window.location.href='frontend/index.html';
-},1000);
-
-}else{
-
-message.textContent='Wrong username or password!';
-message.style.color='red';
-
-}
-
+document.getElementById('loginForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const message = document.getElementById('message');
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, password })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            // Store token in localStorage
+            localStorage.setItem('adminToken', data.access_token);
+            localStorage.setItem('isAdmin', 'true');
+            
+            message.textContent = 'Login successful! Redirecting...';
+            message.style.color = 'green';
+            
+            setTimeout(() => {
+                window.location.href = 'frontend/index.html';
+            }, 1000);
+        } else {
+            message.textContent = data.detail || 'Login failed!';
+            message.style.color = 'red';
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        message.textContent = 'Connection error. Please try again.';
+        message.style.color = 'red';
+    }
 });
-
 </script>
 
 </body>

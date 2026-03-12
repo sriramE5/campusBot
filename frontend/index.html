@@ -1513,7 +1513,9 @@
 
     <script>
         // --- API & State Configuration ---
-        const API_BASE_URL = 'http://127.0.0.1:8000'; // Change to your backend URL
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? 'http://127.0.0.1:8000' 
+    : 'https://your-backend-domain.com'; // Change to your deployed backend URL
         
         // DOM Elements
         const chatContainer = document.getElementById('chat-container');

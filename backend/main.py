@@ -11,8 +11,11 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Depends, status, BackgroundTasks, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from jose import jwt, JWTError
+from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import ASCENDING
+from bson import ObjectId
 
 from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader, UnstructuredWordDocumentLoader, UnstructuredHTMLLoader, JSONLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -23,22 +26,43 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGener
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 BASE_DIR = Path(__file__).resolve().parent
-load_dotenv(BASE_DIR / ".env")
+
+# Load environment based on NODE_ENV
+ENV = os.getenv("NODE_ENV", "development")
+if ENV == "production":
+    load_dotenv(BASE_DIR / ".env.production")
+else:
+    load_dotenv(BASE_DIR / ".env")
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "changeme")
 SECRET_KEY = os.getenv("SECRET_KEY", "devsecret")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
+
+# MongoDB Configuration
+MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
+DATABASE_NAME = os.getenv("DATABASE_NAME", "campusbot")
+
+# Initialize MongoDB client
+client = AsyncIOMotorClient(MONGODB_URL)
+db = client[DATABASE_NAME]
+
 if GEMINI_API_KEY:
     os.environ.setdefault("GEMINI_API_KEY", GEMINI_API_KEY)
     os.environ.setdefault("GOOGLE_API_KEY", GEMINI_API_KEY)
 
 app = FastAPI(title="Full-Stack Campus Helper - Backend")
 
+# CORS Configuration
+if ENV == "production":
+    allowed_origins = ["https://your-frontend-domain.com"]  # Your deployed frontend URL
+else:
+    allowed_origins = ["*"]  # Allow all origins in development
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -64,39 +88,96 @@ app.state.embeddings = None
 class ChatRequest(BaseModel):
     message: str
 
-
 class EventIn(BaseModel):
     name: str
     date: str  
     location: str
     details: str
 
-
 class Event(EventIn):
-    id: str
-
+    id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()))
 
 class LoginRequest(BaseModel):
     username: str
     password: str
 
+# MongoDB Models
+class EventDocument(BaseModel):
+    _id: Optional[ObjectId] = None
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    date: str
+    location: str
+    details: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
+class UserDocument(BaseModel):
+    _id: Optional[ObjectId] = None
+    username: str
+    password_hash: str
+    is_admin: bool = False
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    last_login: Optional[datetime] = None
 
-def read_events() -> List[Event]:
-    if not EVENTS_FILE.exists():
-        EVENTS_FILE.write_text("[]", encoding="utf-8")
-        return []
+# MongoDB Helper Functions
+async def get_events_from_db() -> List[Event]:
+    """Get all events from MongoDB"""
+    events_cursor = db.events.find({}).sort("created_at", -1)
+    events = []
+    async for event_doc in events_cursor:
+        event_doc["id"] = str(event_doc.pop("_id"))
+        events.append(Event(**event_doc))
+    return events
+
+async def add_event_to_db(event_data: EventIn) -> Event:
+    """Add a new event to MongoDB"""
+    event_doc = EventDocument(**event_data.dict())
+    result = await db.events.insert_one(event_doc.dict())
+    event_doc.id = str(result.inserted_id)
+    return Event(**event_doc.dict())
+
+async def delete_event_from_db(event_id: str) -> bool:
+    """Delete an event from MongoDB"""
     try:
-        with open(EVENTS_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            return [Event(**e) for e in data]
-    except Exception:
-        return []
+        result = await db.events.delete_one({"id": event_id})
+        return result.deleted_count > 0
+    except:
+        return False
+
+async def get_user_by_username(username: str) -> Optional[UserDocument]:
+    """Get user by username from MongoDB"""
+    user_doc = await db.users.find_one({"username": username})
+    if user_doc:
+        user_doc["id"] = str(user_doc.pop("_id"))
+        return UserDocument(**user_doc)
+    return None
+
+async def create_default_admin():
+    """Create default admin user if not exists"""
+    existing_admin = await db.users.find_one({"username": "admin"})
+    if not existing_admin:
+        import hashlib
+        password_hash = hashlib.sha256(ADMIN_PASSWORD.encode()).hexdigest()
+        admin_user = UserDocument(
+            username="admin",
+            password_hash=password_hash,
+            is_admin=True
+        )
+        await db.users.insert_one(admin_user.dict())
+        print("Created default admin user")
+
+# Database initialization
+async def init_db():
+    """Initialize database with default data"""
+    await create_default_admin()
+    
+    # Create indexes for better performance
+    await db.events.create_index("id", unique=True)
+    await db.events.create_index("date")
+    await db.users.create_index("username", unique=True)
 
 
-def write_events(events: List[Event]):
-    with open(EVENTS_FILE, "w", encoding="utf-8") as f:
-        json.dump([e.dict() for e in events], f, indent=2, ensure_ascii=False)
 
 # Authentication (JWT)
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
@@ -207,26 +288,10 @@ def start_file_watcher():
 
 
 @app.on_event("startup")
-def startup_event():
-    if not EVENTS_FILE.exists() or EVENTS_FILE.stat().st_size == 0:
-        sample_events = [
-            {
-                "id": str(uuid.uuid4()),
-                "name": "Orientation Day",
-                "date": (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%d"),
-                "location": "Main Auditorium",
-                "details": "Welcome and orientation for new students."
-            },
-            {
-                "id": str(uuid.uuid4()),
-                "name": "Coding Club Meetup",
-                "date": (datetime.utcnow() + timedelta(days=3)).strftime("%Y-%m-%d"),
-                "location": "Lab 204",
-                "details": "Discussing algorithms and interview prep."
-            }
-        ]
-        write_events([Event(**e) for e in sample_events])
-        print("Initialized events.json with sample data.")
+async def startup_event():
+    # Initialize MongoDB
+    await init_db()
+    print("MongoDB initialized successfully")
 
     if not load_faiss_index_if_exists():
         try:
@@ -269,7 +334,7 @@ async def chat_endpoint(chat_req: ChatRequest):
         raise HTTPException(status_code=500, detail=f"Error during retrieval: {e}")
 
     docs_texts = [d.page_content for d in top_docs]
-    events = read_events()
+    events = await get_events_from_db()
     events_json = json.dumps([e.dict() for e in events], indent=2, ensure_ascii=False)
 
     system_message = (
@@ -304,23 +369,47 @@ async def chat_endpoint(chat_req: ChatRequest):
 
 @app.get("/events")
 async def get_events():
-    return [e.dict() for e in read_events()]
+    """Get all events from MongoDB"""
+    events = await get_events_from_db()
+    return [e.dict() for e in events]
 
 
 @app.post("/events")
 async def add_event(event_in: EventIn, auth=Depends(admin_required)):
-    events = read_events()
-    new_event = Event(id=str(uuid.uuid4()), **event_in.dict())
-    events.append(new_event)
-    write_events(events)
+    """Add a new event to MongoDB"""
+    new_event = await add_event_to_db(event_in)
     return new_event.dict()
+
+@app.delete("/events/{event_id}")
+async def delete_event(event_id: str, auth=Depends(admin_required)):
+    """Delete an event from MongoDB"""
+    success = await delete_event_from_db(event_id)
+    if success:
+        return {"message": "Event deleted successfully"}
+    else:
+        raise HTTPException(status_code=404, detail="Event not found")
 
 @app.post("/login")
 async def login(login_request: LoginRequest):
-    if login_request.username != "admin" or login_request.password != ADMIN_PASSWORD:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
-
-    access_token = create_access_token(data={"sub": "admin"}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    """Authenticate user with MongoDB"""
+    import hashlib
+    
+    user = await get_user_by_username(login_request.username)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    
+    # Verify password
+    password_hash = hashlib.sha256(login_request.password.encode()).hexdigest()
+    if user.password_hash != password_hash:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect password")
+    
+    # Update last login
+    await db.users.update_one(
+        {"username": login_request.username},
+        {"$set": {"last_login": datetime.utcnow()}}
+    )
+    
+    access_token = create_access_token(data={"sub": user.username}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.post("/admin/reindex")
