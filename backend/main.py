@@ -10,7 +10,7 @@ import threading
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Depends, status, BackgroundTasks, Header
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from jose import jwt, JWTError
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -399,11 +399,6 @@ async def startup_event():
 async def root():
     return {"message": "CampusBot Backend API", "docs": "/docs", "version": "1.0.0"}
 
-@app.get("/favicon.ico")
-async def favicon():
-    """Return empty favicon to prevent 404 errors"""
-    return Response(content="", media_type="image/x-icon")
-
 # Chat endpoint(RAG)
 
 @app.options("/chat")
@@ -512,8 +507,7 @@ async def signup(signup_request: SignupRequest):
     
     # Check if database is available
     if not db:
-        # For now, return a message that signup is temporarily unavailable
-        return {"message": "User registration is temporarily unavailable. Please use admin login for now."}
+        raise HTTPException(status_code=503, detail="Database not available for signup")
     
     # Check if user already exists
     existing_user = await get_user_by_username(signup_request.username)
