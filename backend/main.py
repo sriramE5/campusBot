@@ -151,6 +151,9 @@ async def get_events_from_db() -> List[Event]:
         print(f"Error fetching events: {e}")
         return fallback_events
 
+# Fallback user storage for when MongoDB is not available
+fallback_users = {}
+
 # Fallback storage for when MongoDB is not available
 fallback_events = [
     Event(
@@ -429,7 +432,7 @@ async def chat_endpoint(chat_req: ChatRequest):
     # If vector store is still not available, provide fallback response
     if not app.state.vectorstore:
         return {
-            "response": f"I apologize, but I'm currently experiencing technical difficulties with my knowledge base. However, I can still help you with general questions about Aditya University. You asked: '{user_question}'. For specific campus information, please try again later or contact the administration office."
+            "response": f"Hello! I'm CampusBot, your AI assistant for Aditya University. While my knowledge base is currently updating, I can still help you with general information about our campus. You asked about: '{user_question}'.\n\n📚 **I can help with:**\n• General campus information\n• Admissions guidance\n• Course information\n• Campus facilities\n• Student life\n• And much more!\n\n💡 **For specific details**, please try again later or visit our administration office. How else can I assist you today?"
         }
 
     try:
@@ -437,7 +440,7 @@ async def chat_endpoint(chat_req: ChatRequest):
     except Exception as e:
         print(f"Vector search error: {e}")
         return {
-            "response": f"I apologize, but I'm experiencing issues with my search functionality. You asked: '{user_question}'. Please try again later or contact the administration for assistance."
+            "response": f"Hello! I'm CampusBot from Aditya University. I'm currently experiencing some technical difficulties with my advanced search system, but I'm still here to help!\n\nYou asked about: '{user_question}'\n\n🎓 **About Aditya University:**\nWe are a premier institution committed to excellence in education, research, and innovation. Our campus offers state-of-the-art facilities, experienced faculty, and a vibrant student community.\n\n📞 **How I can help:**\n• General campus information\n• Academic guidance\n• Student support services\n• Campus life questions\n• And much more!\n\nFor detailed information about specific topics, please try again later or contact our administration office. What else would you like to know?"
         }
 
     docs_texts = [d.page_content for d in top_docs]
@@ -512,8 +515,14 @@ async def signup(signup_request: SignupRequest):
     
     # Check if database is available
     if not db:
-        # For now, return a message that signup is temporarily unavailable
-        return {"message": "User registration is temporarily unavailable. Please use admin login for now."}
+        # Store in fallback storage
+        print(f"Signup request received (DB unavailable): {signup_request.username}")
+        password_hash = hashlib.sha256(signup_request.password.encode()).hexdigest()
+        fallback_users[signup_request.username] = {
+            "password_hash": password_hash,
+            "email": signup_request.email
+        }
+        return {"message": "User created successfully", "username": signup_request.username}
     
     # Check if user already exists
     existing_user = await get_user_by_username(signup_request.username)
@@ -530,7 +539,7 @@ async def signup(signup_request: SignupRequest):
     
     try:
         await db.users.insert_one(new_user.dict())
-        return {"message": "User created successfully"}
+        return {"message": "User created successfully", "username": signup_request.username}
     except Exception as e:
         print(f"Error creating user: {e}")
         raise HTTPException(status_code=500, detail="Failed to create user")
@@ -545,6 +554,15 @@ async def login(login_request: LoginRequest):
         print("Using fallback authentication")
         access_token = create_access_token(data={"sub": "admin"}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
         return {"access_token": access_token, "token_type": "bearer"}
+    
+    # Check fallback users for non-admin users when DB is not available
+    if not db and login_request.username in fallback_users:
+        user_data = fallback_users[login_request.username]
+        password_hash = hashlib.sha256(login_request.password.encode()).hexdigest()
+        if user_data["password_hash"] == password_hash:
+            print(f"Using fallback authentication for user: {login_request.username}")
+            access_token = create_access_token(data={"sub": login_request.username}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+            return {"access_token": access_token, "token_type": "bearer"}
     
     # Try MongoDB authentication for non-admin users
     if db:
