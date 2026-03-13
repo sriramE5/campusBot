@@ -137,11 +137,11 @@ alt="Logo">
 
 <input type="text" id="username" placeholder="Username" required>
 
-<input type="email" id="email" placeholder="Email" style="display: none;" required>
+<input type="email" id="email" placeholder="Email" style="display: none;">
 
 <input type="password" id="password" placeholder="Password" required>
 
-<input type="password" id="confirm-password" placeholder="Confirm Password" style="display: none;" required>
+<input type="password" id="confirm-password" placeholder="Confirm Password" style="display: none;">
 
 <button type="submit" id="submit-btn">Login</button>
 
@@ -155,7 +155,7 @@ alt="Logo">
 // Environment configuration
 const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
     ? 'http://localhost:8000' 
-    : 'https://your-backend-domain.com';
+    : 'https://campusbot-biat.onrender.com';
 
 let currentAuthType = 'user-login';
 

@@ -69,7 +69,7 @@ app = FastAPI(title="Full-Stack Campus Helper - Backend")
 
 # CORS Configuration
 if ENV == "production":
-    allowed_origins = ["https://your-frontend-domain.com"]  # Your deployed frontend URL
+    allowed_origins = ["*"]  # Allow all origins for now
 else:
     allowed_origins = ["*"]  # Allow all origins in development
 
