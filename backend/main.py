@@ -68,17 +68,12 @@ if GEMINI_API_KEY:
 app = FastAPI(title="Full-Stack Campus Helper - Backend")
 
 # CORS Configuration
-if ENV == "production":
-    allowed_origins = ["*"]  # Allow all origins for now
-else:
-    allowed_origins = ["*"]  # Allow all origins in development
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=["*"],  # Allow all origins
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allow all methods
+    allow_headers=["*"],  # Allow all headers
 )
 
 # Paths
@@ -391,16 +386,27 @@ async def chat_endpoint(chat_req: ChatRequest):
     if not user_question:
         raise HTTPException(status_code=400, detail="Empty message")
 
+    # Try to load FAISS index if not available
     if not app.state.vectorstore:
         if not load_faiss_index_if_exists():
-            build_faiss_index()
+            try:
+                build_faiss_index()
+            except Exception as e:
+                print(f"FAISS index build failed: {e}")
+    
+    # If vector store is still not available, provide fallback response
     if not app.state.vectorstore:
-        raise HTTPException(status_code=500, detail="Vector store not available.")
+        return {
+            "response": f"I apologize, but I'm currently experiencing technical difficulties with my knowledge base. However, I can still help you with general questions about Aditya University. You asked: '{user_question}'. For specific campus information, please try again later or contact the administration office."
+        }
 
     try:
         top_docs: List[Document] = app.state.vectorstore.similarity_search(user_question, k=3)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error during retrieval: {e}")
+        print(f"Vector search error: {e}")
+        return {
+            "response": f"I apologize, but I'm experiencing issues with my search functionality. You asked: '{user_question}'. Please try again later or contact the administration for assistance."
+        }
 
     docs_texts = [d.page_content for d in top_docs]
     events = await get_events_from_db()
@@ -427,12 +433,15 @@ async def chat_endpoint(chat_req: ChatRequest):
         "Answer using only the context above."
     )
 
-    llm = ChatGoogleGenerativeAI(model=LLM_MODEL, temperature=0.0)
     try:
+        llm = ChatGoogleGenerativeAI(model=LLM_MODEL, temperature=0.0)
         response = llm.invoke([("system", system_message), ("human", human_message)])
         text = getattr(response, "content", str(response))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"LLM generation error: {e}")
+        print(f"LLM error: {e}")
+        return {
+            "response": f"I apologize, but I'm experiencing issues with my AI response generation. You asked: '{user_question}'. Please try again later or contact the administration for assistance."
+        }
 
     return {"response": text}
 
@@ -446,8 +455,14 @@ async def get_events():
 @app.post("/events")
 async def add_event(event_in: EventIn, auth=Depends(admin_required)):
     """Add a new event to MongoDB"""
-    new_event = await add_event_to_db(event_in)
-    return new_event.dict()
+    try:
+        new_event = await add_event_to_db(event_in)
+        return new_event.dict()
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(f"Add event error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to add event due to database issues")
 
 @app.delete("/events/{event_id}")
 async def delete_event(event_id: str, auth=Depends(admin_required)):
