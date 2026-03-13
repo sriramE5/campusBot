@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import List, Optional
 import time
 import threading
+from urllib.parse import quote_plus
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Depends, status, BackgroundTasks, Header
@@ -44,8 +45,14 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60
 MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
 DATABASE_NAME = os.getenv("DATABASE_NAME", "campusbot")
 
-# Initialize MongoDB client
-client = AsyncIOMotorClient(MONGODB_URL)
+# Initialize MongoDB client with proper URL encoding
+
+# Properly encode the MongoDB URL
+encoded_username = quote_plus("campusbot")
+encoded_password = quote_plus("sriram123")
+MONGODB_URL_ENCODED = f"mongodb+srv://{encoded_username}:{encoded_password}@campusbot.w3qwnk6.mongodb.net/?appName=campusbot"
+
+client = AsyncIOMotorClient(MONGODB_URL_ENCODED)
 db = client[DATABASE_NAME]
 
 if GEMINI_API_KEY:
