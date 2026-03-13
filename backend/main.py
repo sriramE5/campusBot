@@ -45,14 +45,20 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60
 MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
 DATABASE_NAME = os.getenv("DATABASE_NAME", "campusbot")
 
-# Initialize MongoDB client with proper URL encoding
+# Initialize MongoDB client with proper URL encoding and SSL configuration
 
 # Properly encode the MongoDB URL
 encoded_username = quote_plus("campusbot")
 encoded_password = quote_plus("sriram123")
 MONGODB_URL_ENCODED = f"mongodb+srv://{encoded_username}:{encoded_password}@campusbot.w3qwnk6.mongodb.net/?appName=campusbot"
 
-client = AsyncIOMotorClient(MONGODB_URL_ENCODED)
+# Add SSL configuration to fix handshake issues
+client = AsyncIOMotorClient(
+    MONGODB_URL_ENCODED,
+    tls=True,
+    tlsAllowInvalidCertificates=True,
+    serverSelectionTimeoutMS=30000
+)
 db = client[DATABASE_NAME]
 
 if GEMINI_API_KEY:
