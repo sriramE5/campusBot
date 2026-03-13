@@ -44,17 +44,22 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60
 MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
 DATABASE_NAME = os.getenv("DATABASE_NAME", "campusbot")
 
-# Initialize MongoDB client with connection options
-client = AsyncIOMotorClient(
-    MONGODB_URL,
-    serverSelectionTimeoutMS=5000,  # 5 seconds timeout
-    connectTimeoutMS=10000,  # 10 seconds timeout
-    socketTimeoutMS=20000,  # 20 seconds timeout
-    maxPoolSize=10,  # Connection pool size
-    retryWrites=True,
-    w="majority"
-)
-db = client[DATABASE_NAME]
+# Initialize MongoDB client with better error handling
+try:
+    client = AsyncIOMotorClient(
+        MONGODB_URL,
+        serverSelectionTimeoutMS=30000,  # 30 seconds
+        connectTimeoutMS=30000,           # 30 seconds  
+        socketTimeoutMS=30000,            # 30 seconds
+        retryWrites=True,
+        w="majority"
+    )
+    db = client[DATABASE_NAME]
+    print(f"MongoDB client initialized successfully for database: {DATABASE_NAME}")
+except Exception as e:
+    print(f"Failed to initialize MongoDB client: {e}")
+    client = None
+    db = None
 
 if GEMINI_API_KEY:
     os.environ.setdefault("GEMINI_API_KEY", GEMINI_API_KEY)
@@ -131,6 +136,10 @@ class UserDocument(BaseModel):
 # MongoDB Helper Functions
 async def get_events_from_db() -> List[Event]:
     """Get all events from MongoDB"""
+    if not db:
+        print("Database not available - returning empty events list")
+        return []
+    
     try:
         events_cursor = db.events.find({}).sort("created_at", -1)
         events = []
@@ -139,32 +148,43 @@ async def get_events_from_db() -> List[Event]:
             events.append(Event(**event_doc))
         return events
     except Exception as e:
-        print(f"Error getting events from MongoDB: {e}")
-        return []  # Return empty list if MongoDB is not available
+        print(f"Error fetching events: {e}")
+        return []
 
 async def add_event_to_db(event_data: EventIn) -> Event:
     """Add a new event to MongoDB"""
+    if not db:
+        print("Database not available - cannot add event")
+        raise HTTPException(status_code=500, detail="Database not available")
+    
     try:
         event_doc = EventDocument(**event_data.dict())
         result = await db.events.insert_one(event_doc.dict())
         event_doc.id = str(result.inserted_id)
         return Event(**event_doc.dict())
     except Exception as e:
-        print(f"Error adding event to MongoDB: {e}")
-        # Return a fallback event with generated ID
-        return Event(id=str(uuid.uuid4()), **event_data.dict())
+        print(f"Error adding event: {e}")
+        raise HTTPException(status_code=500, detail="Failed to add event")
 
 async def delete_event_from_db(event_id: str) -> bool:
     """Delete an event from MongoDB"""
+    if not db:
+        print("Database not available - cannot delete event")
+        return False
+    
     try:
         result = await db.events.delete_one({"id": event_id})
         return result.deleted_count > 0
     except Exception as e:
-        print(f"Error deleting event from MongoDB: {e}")
+        print(f"Error deleting event: {e}")
         return False
 
 async def get_user_by_username(username: str) -> Optional[UserDocument]:
     """Get user by username from MongoDB"""
+    if not db:
+        print("Database not available - cannot get user")
+        return None
+    
     try:
         user_doc = await db.users.find_one({"username": username})
         if user_doc:
@@ -172,11 +192,15 @@ async def get_user_by_username(username: str) -> Optional[UserDocument]:
             return UserDocument(**user_doc)
         return None
     except Exception as e:
-        print(f"Error getting user from MongoDB: {e}")
+        print(f"Error fetching user: {e}")
         return None
 
 async def create_default_admin():
     """Create default admin user if not exists"""
+    if not db:
+        print("Database not available - cannot create admin user")
+        return
+    
     try:
         existing_admin = await db.users.find_one({"username": "admin"})
         if not existing_admin:
@@ -190,28 +214,32 @@ async def create_default_admin():
             await db.users.insert_one(admin_user.dict())
             print("Created default admin user")
     except Exception as e:
-        print(f"Error creating default admin: {e}")
-        pass
+        print(f"Error creating admin user: {e}")
 
 # Database initialization
 async def init_db():
     """Initialize database with default data"""
+    if not client:
+        print("MongoDB client not available - skipping database initialization")
+        return
+    
     try:
-        # Test MongoDB connection
+        # Test connection first
         await client.admin.command('ping')
         print("MongoDB connection successful")
+        
         await create_default_admin()
         
         # Create indexes for better performance
         await db.events.create_index("id", unique=True)
         await db.events.create_index("date")
         await db.users.create_index("username", unique=True)
-        print("Database indexes created")
+        print("Database indexes created successfully")
+        
     except Exception as e:
-        print(f"MongoDB connection failed: {e}")
-        print("Starting without MongoDB - some features may not work")
-        # Continue without MongoDB for now
-        pass
+        print(f"Database initialization failed: {e}")
+        # Continue without database - app will work but some features won't
+        return
 
 
 
@@ -432,6 +460,7 @@ async def login(login_request: LoginRequest):
     
     # Try MongoDB authentication first
     user = await get_user_by_username(login_request.username)
+    
     if user:
         # Verify password
         password_hash = hashlib.sha256(login_request.password.encode()).hexdigest()
@@ -448,9 +477,9 @@ async def login(login_request: LoginRequest):
             access_token = create_access_token(data={"sub": user.username}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
             return {"access_token": access_token, "token_type": "bearer"}
     
-    # Fallback authentication for admin when MongoDB is not available
+    # Fallback to hardcoded admin credentials for when MongoDB is not available
     if login_request.username == "admin" and login_request.password == ADMIN_PASSWORD:
-        print("Using fallback authentication for admin")
+        print("Using fallback authentication (MongoDB not available)")
         access_token = create_access_token(data={"sub": "admin"}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
         return {"access_token": access_token, "token_type": "bearer"}
     

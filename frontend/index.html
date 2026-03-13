@@ -134,36 +134,6 @@
             border-radius: var(--border-radius);
         }
         
-        .admin-login-btn {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            background: var(--btn-primary-bg);
-            color: white;
-            border: none;
-            border-radius: var(--border-radius);
-            cursor: pointer;
-            font-size: 0.9rem;
-            width: 100%;
-            transition: background-color 0.2s;
-        }
-        
-        .admin-panel {
-            display: none;
-            margin-top: 1rem;
-            padding: 0.75rem;
-            background: var(--bg);
-            border-radius: var(--border-radius);
-            border: 1px solid var(--border-color);
-        }
-        
-        .admin-panel h3 {
-            margin-bottom: 0.75rem;
-            font-size: 1rem;
-            color: var(--text-primary);
-        }
-        
         .admin-option {
             display: flex;
             align-items: center;
@@ -171,18 +141,19 @@
             width: 100%;
             padding: 0.5rem;
             margin-bottom: 0.5rem;
-            background: var(--bg-tertiary);
-            border: none;
+            background: var(--bg);
+            border: 1px solid var(--border-color);
             border-radius: calc(var(--border-radius) / 2);
             cursor: pointer;
             text-align: left;
             font-size: 0.85rem;
-            transition: background-color 0.2s;
+            transition: all 0.2s;
         }
         
         .admin-option:hover {
             background: var(--accent-primary);
             color: white;
+            border-color: var(--accent-primary);
         }
         
         .university-info {
@@ -841,21 +812,18 @@
             background: var(--bg-tertiary);
         }
         
-        .dark-mode .admin-panel {
+        .dark-mode .admin-option {
             background: var(--bg);
             border-color: var(--border-color);
-        }
-        
-        .dark-mode .admin-option {
-            background: var(--bg-tertiary);
             color: var(--text-primary);
         }
         
         .dark-mode .admin-option:hover {
             background: var(--accent-primary);
             color: white;
+            border-color: var(--accent-primary);
         }
-        
+
         .dark-mode .info-item summary {
             background: var(--bg-tertiary);
             color: var(--text-primary);
@@ -1319,20 +1287,17 @@
                 </button>
             </div>
             
-            <div class="admin-section">
-                <button class="admin-login-btn" id="admin-login-btn">
-                    <i class="fas fa-lock"></i> Admin Login
+            <!-- Admin Section (hidden by default, shown for admin users) -->
+            <div class="admin-section" id="admin-section" style="display: none;">
+                <h3 style="margin-bottom: 0.75rem; font-size: 1rem; color: var(--text-primary);">
+                    <i class="fas fa-user-cog"></i> Admin Options
+                </h3>
+                <button class="admin-option" id="update-events-btn" data-action="update-events">
+                    <i class="fas fa-calendar-alt"></i> Update Events
                 </button>
-                
-                <div class="admin-panel" id="admin-panel">
-                    <h3>Admin Options</h3>
-                    <button class="admin-option" data-action="update-events">
-                        <i class="fas fa-calendar-alt"></i> Update Events
-                    </button>
-                    <button class="admin-option" data-action="reindex">
-                        <i class="fas fa-sync-alt"></i> Reindex Knowledge
-                    </button>
-                </div>
+                <button class="admin-option" id="reindex-btn" data-action="reindex">
+                    <i class="fas fa-sync-alt"></i> Reindex Knowledge
+                </button>
             </div>
             
             <div class="university-info">
@@ -1425,25 +1390,7 @@
     
     <div class="toast" id="toast"></div>
     
-    <!-- Admin Login Dialog -->
-    <div class="dialog-modal" id="admin-login-dialog">
-        <div class="dialog-content">
-            <div class="dialog-header">
-                <i class="fas fa-lock"></i>
-                Admin Login
-            </div>
-            <div class="dialog-body">
-                <p>Enter admin credentials to access management features:</p>
-                <input type="text" class="dialog-input" id="admin-username" placeholder="Username" value="admin">
-                <input type="password" class="dialog-input" id="admin-password" placeholder="Password" value="12345678">
-            </div>
-            <div class="dialog-footer">
-                <button class="dialog-btn cancel" id="admin-login-cancel">Cancel</button>
-                <button class="dialog-btn confirm" id="admin-login-confirm">Login</button>
-            </div>
-        </div>
-    </div>
-    
+        
     <!-- Update Events Dialog -->
     <div class="dialog-modal" id="update-events-dialog">
         <div class="dialog-content">
@@ -1533,11 +1480,6 @@ const API_BASE_URL = window.location.hostname === 'localhost' || window.location
         const toast = document.getElementById('toast');
         const themeToggleBtn = document.getElementById('theme-toggle-btn');
         const pageLoader = document.getElementById('page-loader-chatbot');
-        const adminLoginBtn = document.getElementById('admin-login-btn');
-        const adminPanel = document.getElementById('admin-panel');
-        const adminLoginDialog = document.getElementById('admin-login-dialog');
-        const adminLoginCancel = document.getElementById('admin-login-cancel');
-        const adminLoginConfirm = document.getElementById('admin-login-confirm');
         const eventsContent = document.getElementById('events-content');
         const updateEventsDialog = document.getElementById('update-events-dialog');
         const addEventCancelBtn = document.getElementById('add-event-cancel');
@@ -1553,10 +1495,13 @@ const API_BASE_URL = window.location.hostname === 'localhost' || window.location
         let recognition = null;
         let isRecording = false;
         let messageBeingSent = false;
-        let adminLoginToken = null;
+        let isAdmin = false;
 
-        // Initialize the application
+        // Initialize application
         function initApp() {
+            // Check admin status and show/hide admin section
+            checkAdminStatus();
+            
             // Hide page loader after content is loaded
             setTimeout(() => {
                 pageLoader.style.opacity = '0';
@@ -1616,22 +1561,6 @@ const API_BASE_URL = window.location.hostname === 'localhost' || window.location
             // New chat button
             newChatBtn.addEventListener('click', startNewChat);
 
-            // Admin functionality
-            adminLoginBtn.addEventListener('click', showAdminLogin);
-            adminLoginCancel.addEventListener('click', hideAdminLogin);
-            adminLoginConfirm.addEventListener('click', attemptAdminLogin);
-            
-            // Admin options
-            document.querySelectorAll('.admin-option').forEach(option => {
-                option.addEventListener('click', (e) => {
-                    const action = e.currentTarget.dataset.action;
-                    if (adminLoginToken) {
-                        handleAdminAction(action);
-                    } else {
-                        showToast('Please log in as admin first.', true);
-                    }
-                });
-            });
 
             // Event management dialog
             addEventCancelBtn.addEventListener('click', hideUpdateEventsDialog);
@@ -1981,6 +1910,60 @@ const API_BASE_URL = window.location.hostname === 'localhost' || window.location
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
+        // --- Admin Functions ---
+        
+        function checkAdminStatus() {
+            isAdmin = localStorage.getItem('isAdmin') === 'true';
+            const adminSection = document.getElementById('admin-section');
+            
+            if (isAdmin && adminSection) {
+                adminSection.style.display = 'block';
+                
+                // Add event listeners for admin buttons
+                const updateEventsBtn = document.getElementById('update-events-btn');
+                const reindexBtn = document.getElementById('reindex-btn');
+                
+                if (updateEventsBtn) {
+                    updateEventsBtn.addEventListener('click', showUpdateEventsDialog);
+                }
+                
+                if (reindexBtn) {
+                    reindexBtn.addEventListener('click', reindexKnowledgeBase);
+                }
+            }
+        }
+        
+        async function reindexKnowledgeBase() {
+            if (!isAdmin) {
+                showToast('Admin access required!', true);
+                return;
+            }
+
+            showToast('Reindexing knowledge base...');
+
+            try {
+                const authToken = localStorage.getItem('authToken');
+                const response = await fetch(`${API_BASE_URL}/admin/reindex`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to reindex knowledge base');
+                }
+
+                const data = await response.json();
+                showToast('Knowledge base reindexed successfully!');
+                console.log('Reindex result:', data);
+
+            } catch (error) {
+                console.error('Reindex error:', error);
+                showToast(`Reindex failed: ${error.message}`, true);
+            }
+        }
+
         function showToast(message, isError = false) {
             toast.textContent = message;
             toast.className = isError ? 'toast error' : 'toast';
@@ -1991,87 +1974,7 @@ const API_BASE_URL = window.location.hostname === 'localhost' || window.location
             }, 3000);
         }
 
-        // --- Admin Functions (API-connected) ---
-
-        function showAdminLogin() {
-            adminLoginDialog.classList.add('show');
-        }
-
-        function hideAdminLogin() {
-            adminLoginDialog.classList.remove('show');
-        }
-
-        async function attemptAdminLogin() {
-            const username = document.getElementById('admin-username').value;
-            const password = document.getElementById('admin-password').value;
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.detail || "Login failed");
-                }
-
-                const data = await response.json();
-                adminLoginToken = data.access_token;
-                adminPanel.style.display = 'block';
-                adminLoginBtn.innerHTML = '<i class="fas fa-user-cog"></i> Admin';
-                showToast('Admin login successful');
-                hideAdminLogin();
-            } catch (error) {
-                console.error('Login error:', error);
-                showToast(`Login failed: ${error.message}`, true);
-            }
-        }
-
-        function handleAdminAction(action) {
-            switch(action) {
-                case 'update-events':
-                    showUpdateEventsDialog();
-                    break;
-                case 'reindex':
-                    reindexKnowledgeBase();
-                    break;
-                default:
-                    showToast('Action not supported by backend.', true);
-            }
-        }
-        
-        async function reindexKnowledgeBase() {
-            if (!adminLoginToken) {
-                showToast('Admin token not found. Please log in.', true);
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/admin/reindex`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${adminLoginToken}`
-                    }
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.detail || "Reindex failed");
-                }
-
-                showToast('Reindexing started successfully!', false);
-            } catch (error) {
-                console.error('Reindex error:', error);
-                showToast(`Reindex failed: ${error.message}`, true);
-            }
-        }
-
         function showUpdateEventsDialog() {
-            updateEventsDialog.classList.add('show');
-            
-            // Set default date to today
             const today = new Date();
             document.getElementById('event-date').valueAsDate = today;
             
@@ -2081,6 +1984,8 @@ const API_BASE_URL = window.location.hostname === 'localhost' || window.location
             const hours = minutes === 0 ? nextHour.getHours() + 1 : nextHour.getHours();
             const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
             document.getElementById('event-time').value = timeStr;
+            
+            updateEventsDialog.classList.add('show');
         }
 
         function hideUpdateEventsDialog() {
@@ -2094,6 +1999,13 @@ const API_BASE_URL = window.location.hostname === 'localhost' || window.location
         }
 
         async function addEventToBackend() {
+            // Check if user is admin
+            const isAdmin = localStorage.getItem('isAdmin') === 'true';
+            if (!isAdmin) {
+                showToast('Admin access required to add events!', true);
+                return;
+            }
+
             const name = document.getElementById('event-name').value.trim();
             const date = document.getElementById('event-date').value;
             const time = document.getElementById('event-time').value;
@@ -2120,11 +2032,12 @@ const API_BASE_URL = window.location.hostname === 'localhost' || window.location
             };
 
             try {
+                const authToken = localStorage.getItem('authToken');
                 const response = await fetch(`${API_BASE_URL}/events`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${adminLoginToken}`
+                        'Authorization': `Bearer ${authToken}`
                     },
                     body: JSON.stringify(newEvent)
                 });

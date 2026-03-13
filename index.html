@@ -72,6 +72,34 @@ button:hover{
     margin-top:10px;
 }
 
+/* Login Tabs */
+.login-tabs{
+    display:flex;
+    margin-bottom:20px;
+    border-bottom:2px solid #ddd;
+}
+
+.tab-btn{
+    flex:1;
+    padding:10px;
+    background:none;
+    border:none;
+    cursor:pointer;
+    font-size:14px;
+    color:#666;
+    transition:all 0.3s;
+}
+
+.tab-btn.active{
+    color:#0C6AB0;
+    border-bottom:2px solid #0C6AB0;
+    margin-bottom:-2px;
+}
+
+.tab-btn:hover{
+    color:#0C6AB0;
+}
+
 /* Mobile adjustments */
 @media (max-width:480px){
 
@@ -99,13 +127,23 @@ alt="Logo">
 
 <h2>CampusBot</h2>
 
-<form id="loginForm">
+<div class="login-tabs">
+    <button class="tab-btn active" data-tab="user-login">User Login</button>
+    <button class="tab-btn" data-tab="admin-login">Admin Login</button>
+    <button class="tab-btn" data-tab="signup">Sign Up</button>
+</div>
+
+<form id="authForm">
 
 <input type="text" id="username" placeholder="Username" required>
 
+<input type="email" id="email" placeholder="Email" style="display: none;" required>
+
 <input type="password" id="password" placeholder="Password" required>
 
-<button type="submit">Login</button>
+<input type="password" id="confirm-password" placeholder="Confirm Password" style="display: none;" required>
+
+<button type="submit" id="submit-btn">Login</button>
 
 <div id="message" class="message"></div>
 
@@ -119,41 +157,135 @@ const API_BASE_URL = window.location.hostname === 'localhost' || window.location
     ? 'http://localhost:8000' 
     : 'https://your-backend-domain.com';
 
-document.getElementById('loginForm').addEventListener('submit', async function(e){
+let currentAuthType = 'user-login';
+
+// Tab switching functionality
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        currentAuthType = this.dataset.tab;
+        
+        // Update form elements based on auth type
+        const formTitle = document.querySelector('.login-form h2');
+        const usernameInput = document.getElementById('username');
+        const emailInput = document.getElementById('email');
+        const confirmPasswordInput = document.getElementById('confirm-password');
+        const submitBtn = document.getElementById('submit-btn');
+        const messageDiv = document.getElementById('message');
+        
+        // Reset form
+        document.getElementById('authForm').reset();
+        messageDiv.textContent = '';
+        
+        // Show/hide fields based on auth type
+        if (currentAuthType === 'signup') {
+            formTitle.textContent = 'CampusBot - Sign Up';
+            usernameInput.placeholder = 'Choose Username';
+            emailInput.style.display = 'block';
+            confirmPasswordInput.style.display = 'block';
+            submitBtn.textContent = 'Sign Up';
+        } else if (currentAuthType === 'admin-login') {
+            formTitle.textContent = 'CampusBot - Admin Login';
+            usernameInput.placeholder = 'Admin Username';
+            emailInput.style.display = 'none';
+            confirmPasswordInput.style.display = 'none';
+            submitBtn.textContent = 'Admin Login';
+        } else {
+            formTitle.textContent = 'CampusBot - User Login';
+            usernameInput.placeholder = 'Username';
+            emailInput.style.display = 'none';
+            confirmPasswordInput.style.display = 'none';
+            submitBtn.textContent = 'Login';
+        }
+    });
+});
+
+document.getElementById('authForm').addEventListener('submit', async function(e){
     e.preventDefault();
     
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
+    const email = document.getElementById('email').value;
+    const confirmPassword = document.getElementById('confirm-password').value;
     const message = document.getElementById('message');
     
+    // Validation for signup
+    if (currentAuthType === 'signup') {
+        if (!email) {
+            message.textContent = 'Email is required!';
+            message.style.color = 'red';
+            return;
+        }
+        
+        if (password !== confirmPassword) {
+            message.textContent = 'Passwords do not match!';
+            message.style.color = 'red';
+            return;
+        }
+        
+        if (password.length < 6) {
+            message.textContent = 'Password must be at least 6 characters!';
+            message.style.color = 'red';
+            return;
+        }
+    }
+    
     try {
-        const response = await fetch(`${API_BASE_URL}/login`, {
+        let endpoint, payload;
+        
+        if (currentAuthType === 'signup') {
+            endpoint = '/signup';
+            payload = { username, email, password };
+        } else {
+            endpoint = '/login';
+            payload = { username, password };
+        }
+        
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify(payload)
         });
         
         const data = await response.json();
         
         if (response.ok) {
-            // Store token in localStorage
-            localStorage.setItem('adminToken', data.access_token);
-            localStorage.setItem('isAdmin', 'true');
-            
-            message.textContent = 'Login successful! Redirecting...';
-            message.style.color = 'green';
-            
-            setTimeout(() => {
-                window.location.href = 'frontend/index.html';
-            }, 1000);
+            if (currentAuthType === 'signup') {
+                message.textContent = 'Account created successfully! You can now log in.';
+                message.style.color = 'green';
+                
+                // Switch to login tab after successful signup
+                setTimeout(() => {
+                    document.querySelector('[data-tab="user-login"]').click();
+                }, 2000);
+            } else {
+                // Store token in localStorage for login
+                localStorage.setItem('authToken', data.access_token);
+                localStorage.setItem('isAdmin', currentAuthType === 'admin-login' ? 'true' : 'false');
+                localStorage.setItem('username', username);
+                
+                message.textContent = 'Login successful! Redirecting...';
+                message.style.color = 'green';
+                
+                setTimeout(() => {
+                    if (currentAuthType === 'admin-login') {
+                        // For admin login, redirect to frontend with admin privileges
+                        window.location.href = 'frontend/index.html?admin=true';
+                    } else {
+                        // For user login, redirect to frontend
+                        window.location.href = 'frontend/index.html';
+                    }
+                }, 1000);
+            }
         } else {
-            message.textContent = data.detail || 'Login failed!';
+            message.textContent = data.detail || 'Operation failed!';
             message.style.color = 'red';
         }
     } catch (error) {
-        console.error('Login error:', error);
+        console.error('Auth error:', error);
         message.textContent = 'Connection error. Please try again.';
         message.style.color = 'red';
     }
