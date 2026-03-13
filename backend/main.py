@@ -114,6 +114,11 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
+class SignupRequest(BaseModel):
+    username: str
+    password: str
+    email: Optional[str] = None
+
 # MongoDB Models
 class EventDocument(BaseModel):
     _id: Optional[ObjectId] = None
@@ -453,35 +458,65 @@ async def delete_event(event_id: str, auth=Depends(admin_required)):
     else:
         raise HTTPException(status_code=404, detail="Event not found")
 
+@app.post("/signup")
+async def signup(signup_request: SignupRequest):
+    """Register a new user"""
+    import hashlib
+    
+    # Check if database is available
+    if not db:
+        raise HTTPException(status_code=503, detail="Database not available for signup")
+    
+    # Check if user already exists
+    existing_user = await get_user_by_username(signup_request.username)
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Username already exists")
+    
+    # Create new user
+    password_hash = hashlib.sha256(signup_request.password.encode()).hexdigest()
+    new_user = UserDocument(
+        username=signup_request.username,
+        password_hash=password_hash,
+        is_admin=False
+    )
+    
+    try:
+        await db.users.insert_one(new_user.dict())
+        return {"message": "User created successfully"}
+    except Exception as e:
+        print(f"Error creating user: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create user")
+
 @app.post("/login")
 async def login(login_request: LoginRequest):
     """Authenticate user with MongoDB or fallback"""
     import hashlib
     
-    # Try MongoDB authentication first
-    user = await get_user_by_username(login_request.username)
-    
-    if user:
-        # Verify password
-        password_hash = hashlib.sha256(login_request.password.encode()).hexdigest()
-        if user.password_hash == password_hash:
-            # Update last login
-            try:
-                await db.users.update_one(
-                    {"username": login_request.username},
-                    {"$set": {"last_login": datetime.utcnow()}}
-                )
-            except:
-                pass  # Continue even if update fails
-            
-            access_token = create_access_token(data={"sub": user.username}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-            return {"access_token": access_token, "token_type": "bearer"}
-    
-    # Fallback to hardcoded admin credentials for when MongoDB is not available
+    # Fallback to hardcoded admin credentials for when MongoDB is not available OR for admin user
     if login_request.username == "admin" and login_request.password == ADMIN_PASSWORD:
-        print("Using fallback authentication (MongoDB not available)")
+        print("Using fallback authentication")
         access_token = create_access_token(data={"sub": "admin"}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
         return {"access_token": access_token, "token_type": "bearer"}
+    
+    # Try MongoDB authentication for non-admin users
+    if db:
+        user = await get_user_by_username(login_request.username)
+        
+        if user:
+            # Verify password
+            password_hash = hashlib.sha256(login_request.password.encode()).hexdigest()
+            if user.password_hash == password_hash:
+                # Update last login
+                try:
+                    await db.users.update_one(
+                        {"username": login_request.username},
+                        {"$set": {"last_login": datetime.utcnow()}}
+                    )
+                except:
+                    pass  # Continue even if update fails
+                
+                access_token = create_access_token(data={"sub": user.username}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+                return {"access_token": access_token, "token_type": "bearer"}
     
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
 
