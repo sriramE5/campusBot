@@ -79,9 +79,9 @@ app = FastAPI(title="Full-Stack Campus Helper - Backend")
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*", "https://auscampusbot.loopminds.in", "http://localhost:3000", "http://127.0.0.1:3000"],  # Allow all origins including your frontend
+    allow_origins=["*"],  # Allow all origins
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Explicitly allow methods
+    allow_methods=["*"],  # Allow all methods
     allow_headers=["*"],  # Allow all headers
 )
 
@@ -404,10 +404,6 @@ async def chat_endpoint(chat_req: ChatRequest):
     text = getattr(response, "content", str(response))
 
     return {"response": text}
-
-@app.options("/events")
-async def events_options():
-    return JSONResponse(content={"message": "ok"})
 
 @app.get("/events")
 async def get_events():
