@@ -44,18 +44,27 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60
 MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
 DATABASE_NAME = os.getenv("DATABASE_NAME", "campusbot")
 
-# Initialize MongoDB client with better error handling
+# Initialize MongoDB client with proper error handling
 try:
-    client = AsyncIOMotorClient(
-        MONGODB_URL,
-        serverSelectionTimeoutMS=30000,  # 30 seconds
-        connectTimeoutMS=30000,           # 30 seconds  
-        socketTimeoutMS=30000,            # 30 seconds
-        retryWrites=True,
-        w="majority"
-    )
-    db = client[DATABASE_NAME]
-    print(f"MongoDB client initialized successfully for database: {DATABASE_NAME}")
+    # Parse and validate MongoDB URL
+    if MONGODB_URL and "mongodb+srv://" in MONGODB_URL:
+        # For MongoDB Atlas, use proper connection settings
+        client = AsyncIOMotorClient(
+            MONGODB_URL,
+            serverSelectionTimeoutMS=30000,
+            connectTimeoutMS=30000,
+            socketTimeoutMS=30000,
+            retryWrites=True,
+            w="majority",
+            maxPoolSize=10,
+            minPoolSize=1
+        )
+        db = client[DATABASE_NAME]
+        print(f"MongoDB client initialized successfully for database: {DATABASE_NAME}")
+    else:
+        print("Invalid MongoDB URL format")
+        client = None
+        db = None
 except Exception as e:
     print(f"Failed to initialize MongoDB client: {e}")
     client = None
@@ -137,109 +146,78 @@ class UserDocument(BaseModel):
 async def get_events_from_db() -> List[Event]:
     """Get all events from MongoDB"""
     if not db:
-        print("Database not available - returning empty events list")
         return []
     
-    try:
-        events_cursor = db.events.find({}).sort("created_at", -1)
-        events = []
-        async for event_doc in events_cursor:
-            event_doc["id"] = str(event_doc.pop("_id"))
-            events.append(Event(**event_doc))
-        return events
-    except Exception as e:
-        print(f"Error fetching events: {e}")
-        return []
+    events_cursor = db.events.find({}).sort("created_at", -1)
+    events = []
+    async for event_doc in events_cursor:
+        event_doc["id"] = str(event_doc.pop("_id"))
+        events.append(Event(**event_doc))
+    return events
 
 async def add_event_to_db(event_data: EventIn) -> Event:
     """Add a new event to MongoDB"""
     if not db:
-        print("Database not available - cannot add event")
         raise HTTPException(status_code=500, detail="Database not available")
     
-    try:
-        event_doc = EventDocument(**event_data.dict())
-        result = await db.events.insert_one(event_doc.dict())
-        event_doc.id = str(result.inserted_id)
-        return Event(**event_doc.dict())
-    except Exception as e:
-        print(f"Error adding event: {e}")
-        raise HTTPException(status_code=500, detail="Failed to add event")
+    event_doc = EventDocument(**event_data.dict())
+    result = await db.events.insert_one(event_doc.dict())
+    event_doc.id = str(result.inserted_id)
+    return Event(**event_doc.dict())
 
 async def delete_event_from_db(event_id: str) -> bool:
     """Delete an event from MongoDB"""
     if not db:
-        print("Database not available - cannot delete event")
         return False
     
-    try:
-        result = await db.events.delete_one({"id": event_id})
-        return result.deleted_count > 0
-    except Exception as e:
-        print(f"Error deleting event: {e}")
-        return False
+    result = await db.events.delete_one({"id": event_id})
+    return result.deleted_count > 0
 
 async def get_user_by_username(username: str) -> Optional[UserDocument]:
     """Get user by username from MongoDB"""
     if not db:
-        print("Database not available - cannot get user")
         return None
     
-    try:
-        user_doc = await db.users.find_one({"username": username})
-        if user_doc:
-            user_doc["id"] = str(user_doc.pop("_id"))
-            return UserDocument(**user_doc)
-        return None
-    except Exception as e:
-        print(f"Error fetching user: {e}")
-        return None
+    user_doc = await db.users.find_one({"username": username})
+    if user_doc:
+        user_doc["id"] = str(user_doc.pop("_id"))
+        return UserDocument(**user_doc)
+    return None
 
 async def create_default_admin():
     """Create default admin user if not exists"""
     if not db:
-        print("Database not available - cannot create admin user")
         return
     
-    try:
-        existing_admin = await db.users.find_one({"username": "admin"})
-        if not existing_admin:
-            import hashlib
-            password_hash = hashlib.sha256(ADMIN_PASSWORD.encode()).hexdigest()
-            admin_user = UserDocument(
-                username="admin",
-                password_hash=password_hash,
-                is_admin=True
-            )
-            await db.users.insert_one(admin_user.dict())
-            print("Created default admin user")
-    except Exception as e:
-        print(f"Error creating admin user: {e}")
+    existing_admin = await db.users.find_one({"username": "admin"})
+    if not existing_admin:
+        import hashlib
+        password_hash = hashlib.sha256(ADMIN_PASSWORD.encode()).hexdigest()
+        admin_user = UserDocument(
+            username="admin",
+            password_hash=password_hash,
+            is_admin=True
+        )
+        await db.users.insert_one(admin_user.dict())
+        print("Created default admin user")
 
 # Database initialization
 async def init_db():
     """Initialize database with default data"""
     if not client:
-        print("MongoDB client not available - skipping database initialization")
         return
     
-    try:
-        # Test connection first
-        await client.admin.command('ping')
-        print("MongoDB connection successful")
-        
-        await create_default_admin()
-        
-        # Create indexes for better performance
-        await db.events.create_index("id", unique=True)
-        await db.events.create_index("date")
-        await db.users.create_index("username", unique=True)
-        print("Database indexes created successfully")
-        
-    except Exception as e:
-        print(f"Database initialization failed: {e}")
-        # Continue without database - app will work but some features won't
-        return
+    # Test connection and initialize
+    await client.admin.command('ping')
+    print("MongoDB connection successful")
+    
+    await create_default_admin()
+    
+    # Create indexes for better performance
+    await db.events.create_index("id", unique=True)
+    await db.events.create_index("date")
+    await db.users.create_index("username", unique=True)
+    print("Database indexes created successfully")
 
 
 
@@ -386,29 +364,16 @@ async def chat_endpoint(chat_req: ChatRequest):
     if not user_question:
         raise HTTPException(status_code=400, detail="Empty message")
 
-    # Try to load FAISS index if not available
+    # Ensure FAISS index is available
     if not app.state.vectorstore:
         if not load_faiss_index_if_exists():
-            try:
-                build_faiss_index()
-            except Exception as e:
-                print(f"FAISS index build failed: {e}")
+            build_faiss_index()
     
-    # If vector store is still not available, provide fallback response
-    if not app.state.vectorstore:
-        return {
-            "response": f"I apologize, but I'm currently experiencing technical difficulties with my knowledge base. However, I can still help you with general questions about Aditya University. You asked: '{user_question}'. For specific campus information, please try again later or contact the administration office."
-        }
-
-    try:
-        top_docs: List[Document] = app.state.vectorstore.similarity_search(user_question, k=3)
-    except Exception as e:
-        print(f"Vector search error: {e}")
-        return {
-            "response": f"I apologize, but I'm experiencing issues with my search functionality. You asked: '{user_question}'. Please try again later or contact the administration for assistance."
-        }
-
+    # Get documents from vector store
+    top_docs: List[Document] = app.state.vectorstore.similarity_search(user_question, k=3)
     docs_texts = [d.page_content for d in top_docs]
+    
+    # Get events from database
     events = await get_events_from_db()
     events_json = json.dumps([e.dict() for e in events], indent=2, ensure_ascii=False)
 
@@ -433,15 +398,10 @@ async def chat_endpoint(chat_req: ChatRequest):
         "Answer using only the context above."
     )
 
-    try:
-        llm = ChatGoogleGenerativeAI(model=LLM_MODEL, temperature=0.0)
-        response = llm.invoke([("system", system_message), ("human", human_message)])
-        text = getattr(response, "content", str(response))
-    except Exception as e:
-        print(f"LLM error: {e}")
-        return {
-            "response": f"I apologize, but I'm experiencing issues with my AI response generation. You asked: '{user_question}'. Please try again later or contact the administration for assistance."
-        }
+    # Generate response
+    llm = ChatGoogleGenerativeAI(model=LLM_MODEL, temperature=0.0)
+    response = llm.invoke([("system", system_message), ("human", human_message)])
+    text = getattr(response, "content", str(response))
 
     return {"response": text}
 
@@ -455,14 +415,8 @@ async def get_events():
 @app.post("/events")
 async def add_event(event_in: EventIn, auth=Depends(admin_required)):
     """Add a new event to MongoDB"""
-    try:
-        new_event = await add_event_to_db(event_in)
-        return new_event.dict()
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        print(f"Add event error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to add event due to database issues")
+    new_event = await add_event_to_db(event_in)
+    return new_event.dict()
 
 @app.delete("/events/{event_id}")
 async def delete_event(event_id: str, auth=Depends(admin_required)):
@@ -522,13 +476,10 @@ async def login(login_request: LoginRequest):
             password_hash = hashlib.sha256(login_request.password.encode()).hexdigest()
             if user.password_hash == password_hash:
                 # Update last login
-                try:
-                    await db.users.update_one(
-                        {"username": login_request.username},
-                        {"$set": {"last_login": datetime.utcnow()}}
-                    )
-                except:
-                    pass  # Continue even if update fails
+                await db.users.update_one(
+                    {"username": login_request.username},
+                    {"$set": {"last_login": datetime.utcnow()}}
+                )
                 
                 access_token = create_access_token(data={"sub": user.username}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
                 return {"access_token": access_token, "token_type": "bearer"}
