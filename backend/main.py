@@ -46,6 +46,21 @@ DATABASE_NAME = os.getenv("DATABASE_NAME", "campusbot")
 
 # Initialize MongoDB client with better error handling
 try:
+    import urllib.parse
+    
+    # Parse the MongoDB URL and encode username/password if needed
+    if "@" in MONGODB_URL:
+        # Extract the part before @ and encode it
+        auth_part, rest = MONGODB_URL.split("@", 1)
+        if "://" in auth_part:
+            protocol, credentials = auth_part.split("://", 1)
+            if ":" in credentials:
+                username, password = credentials.split(":", 1)
+                # URL encode username and password
+                encoded_username = urllib.parse.quote_plus(username)
+                encoded_password = urllib.parse.quote_plus(password)
+                MONGODB_URL = f"{protocol}://{encoded_username}:{encoded_password}@{rest}"
+    
     client = AsyncIOMotorClient(
         MONGODB_URL,
         serverSelectionTimeoutMS=30000,  # 30 seconds
