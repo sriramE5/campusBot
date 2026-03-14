@@ -135,10 +135,10 @@ class UserDocument(BaseModel):
 
 # MongoDB Helper Functions
 async def get_events_from_db() -> List[Event]:
-    """Get all events from MongoDB or fallback storage"""
+    """Get all events from MongoDB"""
     if not db:
-        print("Database not available - using fallback storage")
-        return fallback_events
+        print("Database not available - returning empty events list")
+        return []
     
     try:
         events_cursor = db.events.find({}).sort("created_at", -1)
@@ -149,40 +149,13 @@ async def get_events_from_db() -> List[Event]:
         return events
     except Exception as e:
         print(f"Error fetching events: {e}")
-        return fallback_events
-
-# Fallback storage for when MongoDB is not available
-fallback_events = [
-    Event(
-        id=str(uuid.uuid4()),
-        name="Orientation Day",
-        date=(datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%d"),
-        location="Main Auditorium",
-        details="Welcome and orientation for new students."
-    ),
-    Event(
-        id=str(uuid.uuid4()),
-        name="Coding Club Meetup",
-        date=(datetime.utcnow() + timedelta(days=3)).strftime("%Y-%m-%d"),
-        location="Lab 204",
-        details="Discussing algorithms and interview prep."
-    )
-]
+        return []
 
 async def add_event_to_db(event_data: EventIn) -> Event:
-    """Add a new event to MongoDB or fallback storage"""
+    """Add a new event to MongoDB"""
     if not db:
-        print("Database not available - using fallback storage")
-        # Use fallback storage
-        event = Event(
-            id=str(uuid.uuid4()),
-            name=event_data.name,
-            date=event_data.date,
-            location=event_data.location,
-            details=event_data.details
-        )
-        fallback_events.append(event)
-        return event
+        print("Database not available - cannot add event")
+        raise HTTPException(status_code=500, detail="Database not available")
     
     try:
         event_doc = EventDocument(**event_data.dict())
