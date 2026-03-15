@@ -86,7 +86,7 @@ app = FastAPI(title="Full-Stack Campus Helper - Backend")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "*",  # Allow all origins
+        "*",  # Allow all origins as fallback
         "https://auscampusbot.loopminds.in",  # Your deployed frontend domain
         "https://campusbot-biat.onrender.com",  # Your backend domain
         "http://localhost:3000",  # Local development
@@ -95,8 +95,9 @@ app.add_middleware(
         "http://127.0.0.1:8000",  # Local backend
     ],
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Explicit methods
     allow_headers=["*"],  # Allow all headers
+    expose_headers=["*"],  # Expose all headers
 )
 
 # Paths
@@ -394,6 +395,10 @@ async def startup_event():
 @app.get("/")
 async def root():
     return {"message": "CampusBot Backend API", "docs": "/docs", "version": "1.0.0"}
+
+@app.get("/test")
+async def test_cors():
+    return {"message": "CORS test endpoint", "timestamp": datetime.utcnow().isoformat()}
 
 # Chat endpoint(RAG)
 
