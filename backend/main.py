@@ -85,7 +85,15 @@ app = FastAPI(title="Full-Stack Campus Helper - Backend")
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins
+    allow_origins=[
+        "*",  # Allow all origins
+        "https://auscampusbot.loopminds.in",  # Your deployed frontend domain
+        "https://campusbot-biat.onrender.com",  # Your backend domain
+        "http://localhost:3000",  # Local development
+        "http://127.0.0.1:3000",  # Local development
+        "http://localhost:8000",  # Local backend
+        "http://127.0.0.1:8000",  # Local backend
+    ],
     allow_credentials=True,
     allow_methods=["*"],  # Allow all methods
     allow_headers=["*"],  # Allow all headers
