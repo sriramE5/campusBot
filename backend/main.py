@@ -517,16 +517,24 @@ async def signup(signup_request: SignupRequest):
         print(f"Error creating user: {e}")
         raise HTTPException(status_code=500, detail="Failed to create user")
 
+@app.options("/login")
+async def login_options():
+    return JSONResponse(content={"message": "ok"})
+
 @app.post("/login")
 async def login(login_request: LoginRequest):
     """Authenticate user with MongoDB or fallback"""
     import hashlib
     
+    print(f"Login attempt for user: {login_request.username}")
+    
     # Fallback to hardcoded admin credentials for when MongoDB is not available OR for admin user
     if login_request.username == "admin" and login_request.password == ADMIN_PASSWORD:
-        print("Using fallback authentication")
+        print("Using fallback authentication - SUCCESS")
         access_token = create_access_token(data={"sub": "admin"}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
         return {"access_token": access_token, "token_type": "bearer"}
+    
+    print("Admin credentials not matched, trying MongoDB...")
     
     # Try MongoDB authentication for non-admin users
     if db:
@@ -536,6 +544,7 @@ async def login(login_request: LoginRequest):
             # Verify password
             password_hash = hashlib.sha256(login_request.password.encode()).hexdigest()
             if user.password_hash == password_hash:
+                print("MongoDB authentication - SUCCESS")
                 # Update last login
                 try:
                     await db.users.update_one(
@@ -548,6 +557,7 @@ async def login(login_request: LoginRequest):
                 access_token = create_access_token(data={"sub": user.username}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
                 return {"access_token": access_token, "token_type": "bearer"}
     
+    print("Authentication failed - INVALID CREDENTIALS")
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
 
 @app.post("/admin/reindex")
